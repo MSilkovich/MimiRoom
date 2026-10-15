@@ -36,3 +36,6 @@ make.bat
 
 doc-dev
 .vscode/*
+
+*.pytest_cache
+*.vscode
