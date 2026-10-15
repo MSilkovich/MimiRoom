@@ -21,12 +21,13 @@ class DatabaseHelper:
             autocommit=False,
             expire_on_commit=False
         )
-
-    def get_scope_session(self):
-        return async_scoped_session(
+        self._scoped_session = async_scoped_session(
             session_factory=self.session_factory,
             scopefunc=current_task
         )
+
+    def get_scope_session(self) -> async_scoped_session:
+        return self._scoped_session
 
     @asynccontextmanager
     async def get_db_session(self):
@@ -42,4 +43,4 @@ class DatabaseHelper:
             await session.close()
 
 
-db_helper = DatabaseHelper(settings_db.database_url, settings_db.DB_ECHO_LOG)
+db_helper = DatabaseHelper(settings_db.database_url, settings_db.DB_ECHO)

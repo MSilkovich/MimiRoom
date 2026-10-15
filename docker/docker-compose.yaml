@@ -1,0 +1,14 @@
+name: miabox-server
+
+services:
+  postgres:
+    extends:
+      file: docker-compose.postgres.yaml
+      service: postgres
+
+volumes:
+  postgres-data:
+
+networks:
+  network-bridge:
+    driver: bridge

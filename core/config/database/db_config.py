@@ -1,19 +1,18 @@
-from typing import Optional
-
-from pydantic import PostgresDsn
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class ConfigDataBase(BaseSettings):
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+
     POSTGRES_USER: str
     POSTGRES_PASSWORD: str
     POSTGRES_HOST: str
     POSTGRES_PORT: str
     POSTGRES_DB: str
-    DB_ECHO_LOG: bool = False
+    DB_ECHO: bool = False
 
     @property
-    def database_url(self) -> Optional[PostgresDsn]:
+    def database_url(self) -> str:
         return (
             f"postgresql+asyncpg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@"
             f"{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"

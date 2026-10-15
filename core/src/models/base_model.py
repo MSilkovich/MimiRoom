@@ -5,25 +5,23 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, declared_attr, mapped_column
 
 
 class Base(DeclarativeBase):
-    __abstarct__ = True
+    __abstract__ = True
 
-    id: Mapped[int] = mapped_column(primary_key=True)
-    # created_at: Mapped[datetime.datetime] = mapped_column(
-    #     TIMESTAMP(timezone=True)
-    # )
-    # updated_at: Mapped[datetime.datetime] = mapped_column(
-    #     TIMESTAMP(timezone=True),
-    #     onupdate=datetime.datetime.now
-    # )
-    created_at: Mapped[datetime] = mapped_column(default=func.now())
-    updated_at: Mapped[datetime] = mapped_column(
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        TIMESTAMP(timezone=True),
+        default=func.now()
+    )
+    updated_at: Mapped[datetime.datetime] = mapped_column(
         TIMESTAMP(timezone=True),
         default=func.now(),
         onupdate=func.now()
     )
-    # type_annotation_map = {
-    #     datetime.datetime: TIMESTAMP(timezone=True),
-    # }
+    # Аудит: id пользователя, от чьего имени создана/изменена запись.
+    # Заполняется автоматически в репозитории из контекста (см. src/context.py),
+    # который выставляется на уровне роутера. Nullable, пока не подключена
+    # авторизация; при необходимости можно перевести в NOT NULL.
+    who_create: Mapped[int | None] = mapped_column(nullable=True)
+    who_update: Mapped[int | None] = mapped_column(nullable=True)
 
     @declared_attr.directive
     def __tablename__(cls) -> str:

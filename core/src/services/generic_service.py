@@ -1,20 +1,27 @@
-from ..schemas.base_schema import PyModel
-from ..repositories.sqlalchemy_repository import AbstractRepository, ModelType
+from typing import Type, TypeVar, Generic, Callable
+
+from ..models.base_model import Base
+from ..repositories.base_uow import UnitOfWork
+from ..schemas.base_schema import Base as PySchema
 
 
-class BaseService:
+ModelType = TypeVar("ModelType", bound=Base)
+CreateSchemaType = TypeVar("CreateSchemaType", bound=PySchema)
+UpdateSchemaType = TypeVar("UpdateSchemaType", bound=PySchema)
 
-    def __init__(self, repository: AbstractRepository) -> None:
-        self.repository: AbstractRepository = repository
+UowFactory = Callable[[], UnitOfWork]
 
-    async def create(self, model: PyModel) -> ModelType:
-        return await self.repository.create(data=model.model_dump())
 
-    async def update(self, pk: int, model: PyModel) -> ModelType:
-        return await self.repository.update(data=model.model_dump(), id=pk)
+class GenericService(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
+    """Общая основа сервисов.
 
-    async def delete(self, pk: int) -> None:
-        await self.repository.delete(id=pk)
+    Хранит фабрику Unit of Work (типа ``db_helper.session_factory`` или
+    лямбды ``lambda: SqlAlchemyUnitOfWork(...)``) и класс модели, для
+    которой сервис предоставляет операции.
+    """
 
-    async def get(self, pk: int) -> ModelType:
-        return await self.repository.get(id=pk)
+    model: Type[ModelType]
+
+    def __init__(self, uow_factory: UowFactory) -> None:
+        self.uow_factory = uow_factory
+

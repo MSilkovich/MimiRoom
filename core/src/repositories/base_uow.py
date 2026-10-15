@@ -4,7 +4,7 @@ from abc import abstractmethod, ABC
 class UnitOfWork(ABC):
 
     @abstractmethod
-    def __init__(self):
+    def __init__(self, session_factory=None):
         ...
 
     @abstractmethod
@@ -12,7 +12,7 @@ class UnitOfWork(ABC):
         ...
 
     @abstractmethod
-    async def __aexit__(self, *args):
+    async def __aexit__(self, exc_type, exc, tb):
         ...
 
     @abstractmethod
@@ -22,3 +22,4 @@ class UnitOfWork(ABC):
     @abstractmethod
     async def rollback(self):
         ...
+
