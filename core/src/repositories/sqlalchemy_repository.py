@@ -3,10 +3,11 @@ from typing import Type, TypeVar, Optional, Generic
 from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from ..context import SYSTEM_USER_ID, get_current_user
+from ..exceptions import UnauthorizedError
 from ..models.base_model import Base
-from ..context import get_current_user_id
 
-from .base_repository import AbstractRepository
+from .base import AbstractRepository
 
 
 ModelType = TypeVar("ModelType", bound=Base)
@@ -20,8 +21,10 @@ class SqlAlchemyRepository(AbstractRepository, Generic[ModelType]):
 
     Поля аудита (who_create / who_update) заполняются автоматически из
     контекста текущего пользователя (см. src/context.py), который выставляется
-    на уровне роутера. Так репозиторий знает, от чьего имени идёт изменение.
+    на уровне midleware. Так репозиторий знает, от чьего имени идёт изменение.
     """
+
+    # TODO: важно - забыл с самого начала заложить к аудитным полям is_deleted - поэтому пока все удаляется безвозвратно
 
     def __init__(self, model: Type[ModelType], session: AsyncSession):
         self.model = model
@@ -32,11 +35,13 @@ class SqlAlchemyRepository(AbstractRepository, Generic[ModelType]):
         return self.model.__mapper__.primary_key[0].name
 
     async def create(self, data: dict) -> ModelType:
-        user_id = get_current_user_id()
+        user = get_current_user()
+        if user is None:
+            raise UnauthorizedError()
         instance = self.model(**data)
         if hasattr(instance, "who_create"):
-            instance.who_create = user_id
-            instance.who_update = user_id
+            instance.who_create = user.user_id
+            instance.who_update = user.user_id
         self.session.add(instance)
         await self.session.flush()
         await self.session.refresh(instance)
@@ -48,11 +53,11 @@ class SqlAlchemyRepository(AbstractRepository, Generic[ModelType]):
         if not filters:
             filters = {self.pk_name: data[self.pk_name]}
         values = dict(data)
-        user_id = get_current_user_id()
-        # who_update фиксируем только когда пользователь известен, иначе
-        # затирали бы прежнее значение NULL-ом.
-        if user_id is not None and hasattr(self.model, "who_update"):
-            values["who_update"] = user_id
+        user = get_current_user()
+        if user is None:
+            raise UnauthorizedError()
+        if hasattr(self.model, "who_update"):
+            values["who_update"] = user.user_id
         stmt = (
             update(self.model)
             .filter_by(**filters)
@@ -64,6 +69,9 @@ class SqlAlchemyRepository(AbstractRepository, Generic[ModelType]):
         return res.scalar_one()
 
     async def delete(self, **filters) -> None:
+        user = get_current_user()
+        if user is None:
+            raise UnauthorizedError()
         await self.session.execute(delete(self.model).filter_by(**filters))
         await self.session.flush()
 
@@ -77,8 +85,9 @@ class SqlAlchemyRepository(AbstractRepository, Generic[ModelType]):
         limit: int = 100,
         offset: int = 0,
     ) -> list[ModelType]:
-        order_column = getattr(self.model, order) if order else getattr(self.model, self.pk_name)
-        stmt = select(self.model).order_by(order_column).limit(limit).offset(offset)
+        order_column = getattr(self.model, order) if order else getattr(
+            self.model, self.pk_name)
+        stmt = select(self.model).order_by(
+            order_column).limit(limit).offset(offset)
         row = await self.session.execute(stmt)
         return list(row.scalars().all())
-

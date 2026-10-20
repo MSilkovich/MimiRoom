@@ -23,7 +23,7 @@ from sqlalchemy.pool import NullPool
 
 import src.models  # noqa: F401
 from src.models.base_model import Base
-from src.repositories.sqlalchemy_uow import SqlAlchemyUnitOfWork
+from src.repositories.uow import SqlAlchemyUnitOfWork
 from src.services.measure_unit_service import MeasureUnitService
 
 

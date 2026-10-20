@@ -1,0 +1,1 @@
+"""MimiRoom core application package."""

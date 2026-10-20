@@ -9,6 +9,8 @@ from .user import User
 from .pet import Pet
 from .service_consumable import ServiceConsumable
 from .book import Book
+from .refresh_token import RefreshToken
+from .token_type import TokenType
 
 __all__ = [
     "Base",
@@ -22,5 +24,6 @@ __all__ = [
     "Pet",
     "ServiceConsumable",
     "Book",
+    "RefreshToken",
+    "TokenType"
 ]
-

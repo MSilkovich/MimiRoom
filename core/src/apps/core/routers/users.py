@@ -1,0 +1,78 @@
+"""CRUD для пользователей (User).
+
+Путь: /users*
+- GET    /users                          — список пользователей
+- GET    /users/{id}                     — один пользователь
+- POST   /users                          — создать пользователя
+- PUT    /users/{id}                     — обновить пользователя
+- DELETE /users/{id}                     — удалить пользователя
+
+Авторизация:
+- Для создания пользователя требуется ``Depends(get_current_user)`` (текущий
+  ``user_id`` попадёт в контекст аудита и заполнит ``who_create``/``who_update``).
+- Чтение/обновление/удаление в этом прототипе не защищаются, чтобы не плодить
+  рутину; в продакшене добавьте проверку прав согласно ролям.
+"""
+
+from fastapi import APIRouter, Depends
+
+from src import dependencies as deps
+from src.schemas.user import UserCreate, UserRead, UserUpdate
+from src.services.user_service import UserService
+
+router = APIRouter("/users", tags=["users"])
+
+
+@router.get("", response_model=list[UserRead])
+async def user_list(
+    limit: int = 100, offset: int = 0, uow_factory=Depends(deps.get_uow_factory)
+):
+    """Показать список пользователей."""
+    service = UserService(uow_factory=uow_factory)
+    return await service.get_multi(limit=limit, offset=offset)
+
+
+@router.get("/{pk}", response_model=UserRead)
+async def user_read(pk: int, uow_factory=Depends(deps.get_uow_factory)):
+    """Показать одного пользователя по id."""
+    service = UserService(uow_factory=uow_factory)
+    user = await service.get(pk)
+    if user is None:
+        raise deps.NotFoundError(detail="Пользователь не найден")
+    return user
+
+
+@router.post("", response_model=UserRead, status_code=201)
+async def user_create(
+    payload: UserCreate,
+    current_user: int = Depends(deps.get_current_user),
+    uow_factory=Depends(deps.get_uow_factory),
+):
+    """Создать пользователя.
+
+    Текущий ``current_user`` нужен, чтобы ``who_create``/``who_update`` были
+    заполнены из контекста. Пароль при выдаче не эскейпится в ``UserRead``.
+    """
+    service = UserService(uow_factory=uow_factory)
+    return await service.create(payload)
+
+
+@router.put("/{pk}", response_model=UserRead)
+async def user_update(
+    pk: int,
+    payload: UserUpdate,
+    uow_factory=Depends(deps.get_uow_factory),
+):
+    """Обновить пользователя."""
+    service = UserService(uow_factory=uow_factory)
+    user = await service.update(pk, payload)
+    if user is None:
+        raise deps.NotFoundError(detail="Пользователь не найден")
+    return user
+
+
+@router.delete("/{pk}", status_code=204)
+async def user_delete(pk: int, uow_factory=Depends(deps.get_uow_factory)):
+    """Удалить пользователя."""
+    service = UserService(uow_factory=uow_factory)
+    await service.delete(pk)

@@ -12,6 +12,7 @@ from ..models import (
     Pet,
     ServiceConsumable,
     Book,
+    RefreshToken
 )
 from .measure_unit_repository import MeasureUnitRepository
 from .pet_type_repository import PetTypeRepository
@@ -23,6 +24,7 @@ from .user_repository import UserRepository
 from .pet_repository import PetRepository
 from .service_consumable_repository import ServiceConsumableRepository
 from .book_repository import BookRepository
+from .tokens_repository import RefreshTokenRepository
 
 
 class SqlAlchemyUnitOfWork(UnitOfWork):
@@ -50,6 +52,8 @@ class SqlAlchemyUnitOfWork(UnitOfWork):
         self.pets = PetRepository(self.session)
         self.service_consumables = ServiceConsumableRepository(self.session)
         self.books = BookRepository(self.session)
+        self.refresh_tokens = RefreshTokenRepository(
+            RefreshToken, self.session)
 
         self._repositories = {
             MeasureUnit: self.measure_units,
@@ -73,14 +77,14 @@ class SqlAlchemyUnitOfWork(UnitOfWork):
             raise LookupError(f"Нет репозитория для модели {model.__name__}")
 
     async def __aexit__(self, exc_type, exc, tb):
-        if exc_type is not None:
-            await self.session.rollback()
+        if exc_type:
+            await self.rollback()
+        else:
+            await self.commit()
         await self.session.close()
-        self.session = None
 
     async def commit(self):
         await self.session.commit()
 
     async def rollback(self):
         await self.session.rollback()
-

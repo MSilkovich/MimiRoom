@@ -1,7 +1,7 @@
-from .base_repository import AbstractRepository
+from .base import AbstractRepository
 from .sqlalchemy_repository import SqlAlchemyRepository, ModelType
 from .base_uow import UnitOfWork
-from .sqlalchemy_uow import SqlAlchemyUnitOfWork
+from .uow import SqlAlchemyUnitOfWork
 from .measure_unit_repository import MeasureUnitRepository
 from .pet_type_repository import PetTypeRepository
 from .role_repository import RoleRepository
@@ -30,4 +30,3 @@ __all__ = [
     "ServiceConsumableRepository",
     "BookRepository",
 ]
-

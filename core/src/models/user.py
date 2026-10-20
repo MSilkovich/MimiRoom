@@ -9,6 +9,7 @@ if TYPE_CHECKING:
     from .book import Book
     from .pet import Pet
     from .role import Role
+    from .refresh_token import RefreshToken
 
 
 class User(Base):
@@ -39,4 +40,8 @@ class User(Base):
         "Book",
         back_populates="master",
         lazy="selectin"
+    )
+
+    refresh_tokens: Mapped[list["RefreshToken"]] = relationship(
+        "RefreshToken", back_populates="user", cascade="all, delete-orphan"
     )
