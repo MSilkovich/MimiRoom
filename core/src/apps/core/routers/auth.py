@@ -24,10 +24,10 @@ AuthServiceDep = Annotated[AuthService, Depends(get_auth_service)]
 @router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
 async def register(payload: RegisterRequest, auth: AuthService = Depends(deps.get_service(AuthService))):
     try:
-        user_id = await auth.register(payload.login, payload.password)
+        user = await auth.register(payload)
     except UserAlreadyExistsError:
         raise HTTPException(status.HTTP_409_CONFLICT, "User already exists")
-    return await auth.issue_pair(user_id)
+    return await auth.issue_pair(user.user_id)
 
 
 @router.post("/token", response_model=TokenResponse)

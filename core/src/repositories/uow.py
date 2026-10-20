@@ -52,8 +52,7 @@ class SqlAlchemyUnitOfWork(UnitOfWork):
         self.pets = PetRepository(self.session)
         self.service_consumables = ServiceConsumableRepository(self.session)
         self.books = BookRepository(self.session)
-        self.refresh_tokens = RefreshTokenRepository(
-            RefreshToken, self.session)
+        self.refresh_tokens = RefreshTokenRepository(self.session)
 
         self._repositories = {
             MeasureUnit: self.measure_units,

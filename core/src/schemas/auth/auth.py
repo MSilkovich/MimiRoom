@@ -7,6 +7,9 @@ from src.models import TokenType
 class RegisterRequest(Base):
     login: str = Field(min_length=3, max_length=64)
     password: str = Field(min_length=6, max_length=128)
+    name: str = Field(min_length=6, max_length=255)
+    surname: str = Field(min_length=6, max_length=255)
+    patronymic: str | None = Field(min_length=6, max_length=255)
 
 
 class TokenRequest(Base):

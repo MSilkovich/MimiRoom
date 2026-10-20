@@ -11,6 +11,7 @@ from config.jwt import settings_jwt
 from src.models import User, TokenType
 from src.exceptions import InvalidCredentialsError, InvalidTokenError, UserAlreadyExistsError
 from src.context import system_context
+from src.schemas.auth.auth import RegisterRequest
 from src.services.generic_service import UowFactory
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -75,15 +76,14 @@ class AuthService:
 
     # region auth methods
 
-    async def register(self, login: str, password: str) -> User:
+    async def register(self, requst: RegisterRequest) -> User:
         with system_context():
             async with self.uow_factory() as uow:
-                if await uow.users.get_single(login=login):
+                if await uow.users.get_single(login=requst.login):
                     raise UserAlreadyExistsError()
-                user = await uow.users.create({
-                    "login": login,
-                    "password": self.hash_password(password),
-                })
+                requst.password = self.hash_password(requst.password)
+                # TODO: role_id ставить user тк на регистрацию нельзя привиллегии давать
+                user = await uow.users.create(requst.model_dump())
                 await uow.commit()
         return user
 
