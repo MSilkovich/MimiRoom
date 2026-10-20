@@ -14,7 +14,7 @@ from src.services import PetTypeService
 from src import dependencies as deps
 from src.schemas import PetTypeCreate, PetTypeRead, PetTypeUpdate
 
-router = APIRouter("/pet-types", tags=["pet-types"])
+router = APIRouter(prefix="/pet-types", tags=["pet-types"])
 
 
 @router.get("", response_model=list[PetTypeRead])

@@ -32,4 +32,4 @@ ARG CORE_PORT
 ENV CORE_PORT=${CORE_PORT}
 
 ENTRYPOINT ["sh", "-c"]
-CMD ["uvicorn src.main:app --host 0.0.0.0 --port ${CORE_PORT} --reload"]
+CMD ["exec uvicorn src.apps.core.main:app --host 0.0.0.0 --port ${CORE_PORT}"]

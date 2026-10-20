@@ -20,7 +20,7 @@ from src import dependencies as deps
 from src.schemas.user import UserCreate, UserRead, UserUpdate
 from src.services.user_service import UserService
 
-router = APIRouter("/users", tags=["users"])
+router = APIRouter(prefix="/users", tags=["users"])
 
 
 @router.get("", response_model=list[UserRead])

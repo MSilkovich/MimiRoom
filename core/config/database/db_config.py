@@ -9,7 +9,6 @@ class ConfigDataBase(BaseSettings):
     POSTGRES_HOST: str
     POSTGRES_PORT: str
     POSTGRES_DB: str
-    DB_ECHO: bool = False
 
     @property
     def database_url(self) -> str:

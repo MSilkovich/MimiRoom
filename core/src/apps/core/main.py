@@ -16,7 +16,7 @@ from .lifespan import lifespan
 def get_application() -> FastAPI:
     application = FastAPI(
         title=settings_app.PROJECT_NAME,
-        debug=settings_app.DEBUG,
+        debug=True,
         version=settings_app.VERSION,
         lifespan=lifespan,
     )
@@ -35,7 +35,7 @@ def get_application() -> FastAPI:
 app = get_application()
 
 
-if __name__ == "__main__":
-    import uvicorn
+# if __name__ == "__main__":
+#     import uvicorn
 
-    uvicorn.run("apps.core.main:app", host="0.0.0.0", port=8000, reload=True)
+#     uvicorn.run("apps.core.main:app", host="0.0.0.0", port=80, reload=True)

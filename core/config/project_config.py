@@ -10,11 +10,9 @@ load_dotenv()
 
 
 class Settings(BaseSettings):
-    DB_ECHO: bool
     PROJECT_NAME: str
     VERSION: str
-    DEBUG: bool
-    CORS_ALLOWED_ORIGINS: str
+    LOG_LEVEL: str
 
 
 settings_app = Settings()

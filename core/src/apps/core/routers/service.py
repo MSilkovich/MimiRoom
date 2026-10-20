@@ -14,7 +14,7 @@ from src.services import ServiceService
 from src import dependencies as deps
 from src.schemas import ServiceCreate, ServiceRead, ServiceUpdate
 
-router = APIRouter("/services", tags=["services"])
+router = APIRouter(prefix="/services", tags=["services"])
 
 
 @router.get("", response_model=list[ServiceRead])

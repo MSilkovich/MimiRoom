@@ -14,7 +14,7 @@ from src.services import StorageService
 from src import dependencies as deps
 from src.schemas import StorageCreate, StorageRead, StorageUpdate
 
-router = APIRouter("/storages", tags=["storage"])
+router = APIRouter(prefix="/storages", tags=["storage"])
 
 
 @router.get("", response_model=list[StorageRead])

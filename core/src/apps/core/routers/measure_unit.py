@@ -14,7 +14,7 @@ from src.services import MeasureUnitService
 from src import dependencies as deps
 from src.schemas import MeasureUnitCreate, MeasureUnitUpdate, MeasureUnitRead
 
-router = APIRouter("/measure-units", tags=["measure-units"])
+router = APIRouter(prefix="/measure-units", tags=["measure-units"])
 
 
 @router.get("", response_model=list[MeasureUnitRead])

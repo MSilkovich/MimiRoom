@@ -14,7 +14,7 @@ from src.services import BreedService
 from src import dependencies as deps
 from src.schemas import BreedCreate, BreedRead, BreedUpdate
 
-router = APIRouter("/breeds", tags=["breeds"])
+router = APIRouter(prefix="/breeds", tags=["breeds"])
 
 
 @router.get("", response_model=list[BreedRead])

@@ -16,7 +16,7 @@ from src.services import BookService
 from src import dependencies as deps
 from src.schemas import BookCreate, BookRead, BookUpdate
 
-router = APIRouter("/book", tags=["book"])
+router = APIRouter(prefix="/book", tags=["book"])
 
 
 @router.get("", response_model=list[BookRead])

@@ -15,7 +15,7 @@ def get_apps_router() -> APIRouter:
     from .routers.book import router as book_router
     from .routers.users import router as users_router
 
-    router = APIRouter(f"/api/v{settings_app.VERSION}")
+    router = APIRouter(prefix=f"/api/v{settings_app.VERSION}")
 
     router.include_router(auth_router, prefix="/auth")
     router.include_router(measure_unit_router, prefix="/measure-units")
