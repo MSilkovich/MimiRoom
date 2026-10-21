@@ -14,13 +14,17 @@
   рутину; в продакшене добавьте проверку прав согласно ролям.
 """
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Security
 
 from src import dependencies as deps
 from src.schemas.user import UserCreate, UserRead, UserUpdate
 from src.services.user_service import UserService
+from src.middleware.auth import get_current_user, bearer_scheme
 
-router = APIRouter(prefix="/users", tags=["users"])
+router = APIRouter(prefix="/users", tags=["users"], dependencies=[
+    Security(bearer_scheme),
+    Depends(get_current_user),
+])
 
 
 @router.get("", response_model=list[UserRead])

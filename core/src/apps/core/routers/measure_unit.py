@@ -8,29 +8,33 @@
 - DELETE /measure-units/{id}         — удалить
 """
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Security
 
+from src.middleware.auth import get_current_user, bearer_scheme
 from src.services import MeasureUnitService
 from src import dependencies as deps
 from src.schemas import MeasureUnitCreate, MeasureUnitUpdate, MeasureUnitRead
 
-router = APIRouter(prefix="/measure-units", tags=["measure-units"])
+router = APIRouter(prefix="/measure-units", tags=["measure-units"], dependencies=[
+    Security(bearer_scheme),
+    Depends(get_current_user),
+])
 
 
 @router.get("", response_model=list[MeasureUnitRead])
 async def measure_unit_list(
     limit: int = 100,
     offset: int = 0,
-    uow: MeasureUnitService = Depends(deps.get_uow_factory),
+    servive: MeasureUnitService = Depends(deps.get_service(MeasureUnitService))
 ):
     """Вернуть страницу измерений."""
-    return await uow.get_multi(limit=limit, offset=offset)
+    return await servive.get_multi(limit=limit, offset=offset)
 
 
 @router.get("/{pk}", response_model=MeasureUnitRead)
-async def measure_unit_read(pk: int, uow: MeasureUnitService = Depends(deps.get_uow_factory)):
+async def measure_unit_read(pk: int, servive: MeasureUnitService = Depends(deps.get_service(MeasureUnitService))):
     """Вернуть одно измерение по id."""
-    item = await uow.get(pk)
+    item = await servive.get(pk)
     if item is None:
         raise deps.NotFoundError(detail="Измерение не найдено")
     return item
@@ -39,26 +43,26 @@ async def measure_unit_read(pk: int, uow: MeasureUnitService = Depends(deps.get_
 @router.post("", response_model=MeasureUnitRead, status_code=201)
 async def measure_unit_create(
     data: MeasureUnitCreate,
-    uow: MeasureUnitService = Depends(deps.get_uow_factory),
+    servive: MeasureUnitService = Depends(deps.get_service(MeasureUnitService))
 ):
     """Создать новое измерение."""
-    return await uow.create(data)
+    return await servive.create(data)
 
 
 @router.put("/{pk}", response_model=MeasureUnitRead)
 async def measure_unit_update(
     pk: int,
     data: MeasureUnitUpdate,
-    uow: MeasureUnitService = Depends(deps.get_uow_factory),
+    servive: MeasureUnitService = Depends(deps.get_service(MeasureUnitService))
 ):
     """Обновить измерение целиком."""
-    item = await uow.update(pk, data)
+    item = await servive.update(pk, data)
     if item is None:
         raise deps.NotFoundError(detail="Измерение не найдено")
     return item
 
 
 @router.delete("/{pk}", status_code=204)
-async def measure_unit_delete(pk: int, uow: MeasureUnitService = Depends(deps.get_uow_factory)):
+async def measure_unit_delete(pk: int, servive: MeasureUnitService = Depends(deps.get_service(MeasureUnitService))):
     """Удалить измерение."""
-    await uow.delete(pk)
+    await servive.delete(pk)

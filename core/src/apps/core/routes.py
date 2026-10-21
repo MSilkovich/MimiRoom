@@ -17,14 +17,14 @@ def get_apps_router() -> APIRouter:
 
     router = APIRouter(prefix=f"/api/v{settings_app.VERSION}")
 
-    router.include_router(auth_router, prefix="/auth")
-    router.include_router(measure_unit_router, prefix="/measure-units")
-    router.include_router(pet_type_router, prefix="/pet-types")
-    router.include_router(breed_router, prefix="/breeds")
-    router.include_router(storage_router, prefix="/storages")
-    router.include_router(service_router, prefix="/services")
-    router.include_router(pet_router, prefix="/pets")
-    router.include_router(book_router, prefix="/books")
-    router.include_router(users_router, prefix="/users")
+    router.include_router(auth_router)
+    router.include_router(measure_unit_router)
+    router.include_router(pet_type_router)
+    router.include_router(breed_router)
+    router.include_router(storage_router)
+    router.include_router(service_router)
+    router.include_router(pet_router)
+    router.include_router(book_router)
+    router.include_router(users_router)
 
     return router

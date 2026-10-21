@@ -3,7 +3,7 @@ from typing import Type, TypeVar, Optional, Generic
 from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..context import SYSTEM_USER_ID, get_current_user
+from ..context import get_current_user
 from ..exceptions import UnauthorizedError
 from ..models.base_model import Base
 
@@ -36,8 +36,8 @@ class SqlAlchemyRepository(AbstractRepository, Generic[ModelType]):
 
     async def create(self, data: dict) -> ModelType:
         user = get_current_user()
-        if user is None:
-            raise UnauthorizedError()
+        # if user is None:
+        #     raise UnauthorizedError()
         instance = self.model(**data)
         if hasattr(instance, "who_create"):
             instance.who_create = user.user_id
@@ -54,8 +54,8 @@ class SqlAlchemyRepository(AbstractRepository, Generic[ModelType]):
             filters = {self.pk_name: data[self.pk_name]}
         values = dict(data)
         user = get_current_user()
-        if user is None:
-            raise UnauthorizedError()
+        # if user is None:
+        #     raise UnauthorizedError()
         if hasattr(self.model, "who_update"):
             values["who_update"] = user.user_id
         stmt = (
@@ -70,8 +70,8 @@ class SqlAlchemyRepository(AbstractRepository, Generic[ModelType]):
 
     async def delete(self, **filters) -> None:
         user = get_current_user()
-        if user is None:
-            raise UnauthorizedError()
+        # if user is None:
+        #     raise UnauthorizedError()
         await self.session.execute(delete(self.model).filter_by(**filters))
         await self.session.flush()
 

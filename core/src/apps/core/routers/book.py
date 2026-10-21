@@ -10,13 +10,17 @@
 Примечание: в нашем проекте «книга» — это запись вручную, а не счётчик.
 """
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Security
 
 from src.services import BookService
 from src import dependencies as deps
 from src.schemas import BookCreate, BookRead, BookUpdate
+from src.middleware.auth import get_current_user, bearer_scheme
 
-router = APIRouter(prefix="/book", tags=["book"])
+router = APIRouter(prefix="/book", tags=["book"], dependencies=[
+    Security(bearer_scheme),
+    Depends(get_current_user),
+])
 
 
 @router.get("", response_model=list[BookRead])

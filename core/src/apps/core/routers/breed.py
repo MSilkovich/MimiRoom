@@ -8,13 +8,17 @@
 - DELETE /breeds/{id}         — удалить
 """
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Security
 
 from src.services import BreedService
 from src import dependencies as deps
 from src.schemas import BreedCreate, BreedRead, BreedUpdate
+from src.middleware.auth import get_current_user, bearer_scheme
 
-router = APIRouter(prefix="/breeds", tags=["breeds"])
+router = APIRouter(prefix="/breeds", tags=["breeds"], dependencies=[
+    Security(bearer_scheme),
+    Depends(get_current_user),
+])
 
 
 @router.get("", response_model=list[BreedRead])

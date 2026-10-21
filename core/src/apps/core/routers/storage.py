@@ -8,13 +8,17 @@
 - DELETE /storages/{id}         — удалить
 """
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Security
 
 from src.services import StorageService
 from src import dependencies as deps
 from src.schemas import StorageCreate, StorageRead, StorageUpdate
+from src.middleware.auth import get_current_user, bearer_scheme
 
-router = APIRouter(prefix="/storages", tags=["storage"])
+router = APIRouter(prefix="/storages", tags=["storage"], dependencies=[
+    Security(bearer_scheme),
+    Depends(get_current_user),
+])
 
 
 @router.get("", response_model=list[StorageRead])

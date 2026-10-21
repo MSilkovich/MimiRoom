@@ -14,13 +14,6 @@ from src.exceptions import InvalidCredentialsError, InvalidTokenError, UserAlrea
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
-def get_auth_service(uow_factory: deps.UowFactoryDep) -> AuthService:
-    return AuthService(uow_factory)
-
-
-AuthServiceDep = Annotated[AuthService, Depends(get_auth_service)]
-
-
 @router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
 async def register(payload: RegisterRequest, auth: AuthService = Depends(deps.get_service(AuthService))):
     try:

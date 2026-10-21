@@ -8,13 +8,17 @@
 - DELETE /services/{id}         — удалить
 """
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Security
 
 from src.services import ServiceService
 from src import dependencies as deps
 from src.schemas import ServiceCreate, ServiceRead, ServiceUpdate
+from src.middleware.auth import get_current_user, bearer_scheme
 
-router = APIRouter(prefix="/services", tags=["services"])
+router = APIRouter(prefix="/services", tags=["services"], dependencies=[
+    Security(bearer_scheme),
+    Depends(get_current_user),
+])
 
 
 @router.get("", response_model=list[ServiceRead])
