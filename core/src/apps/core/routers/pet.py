@@ -24,37 +24,37 @@ router = APIRouter(prefix="/pets", tags=["pets"], dependencies=[
 
 @router.get("", response_model=list[PetRead])
 async def pet_list(
-    limit: int = 100, offset: int = 0, uow: PetService = Depends(deps.get_uow_factory)
+    limit: int = 100, offset: int = 0, servive: PetService = Depends(deps.get_service(PetService))
 ):
     """Вернуть список питомцев."""
-    return await uow.get_multi(limit=limit, offset=offset)
+    return await servive.get_multi(limit=limit, offset=offset)
 
 
 @router.get("/{pk}", response_model=PetRead)
-async def pet_read(pk: int, uow: PetService = Depends(deps.get_uow_factory)):
+async def pet_read(pk: int, servive: PetService = Depends(deps.get_service(PetService))):
     """Вернуть питомца по id."""
-    item = await uow.get(pk)
+    item = await servive.get(pk)
     if item is None:
         raise deps.NotFoundError(detail="Питомец не найден")
     return item
 
 
 @router.post("", response_model=PetRead, status_code=201)
-async def pet_create(data: PetCreate, uow: PetService = Depends(deps.get_uow_factory)):
+async def pet_create(data: PetCreate, servive: PetService = Depends(deps.get_service(PetService))):
     """Создать питомца."""
-    return await uow.create(data)
+    return await servive.create(data)
 
 
 @router.put("/{pk}", response_model=PetRead)
-async def pet_update(pk: int, data: PetUpdate, uow: PetService = Depends(deps.get_uow_factory)):
+async def pet_update(pk: int, data: PetUpdate, servive: PetService = Depends(deps.get_service(PetService))):
     """Обновить питомца."""
-    item = await uow.update(pk, data)
+    item = await servive.update(pk, data)
     if item is None:
         raise deps.NotFoundError(detail="Питомец не найден")
     return item
 
 
 @router.delete("/{pk}", status_code=204)
-async def pet_delete(pk: int, uow: PetService = Depends(deps.get_uow_factory)):
+async def pet_delete(pk: int, servive: PetService = Depends(deps.get_service(PetService))):
     """Удалить питомца."""
-    await uow.delete(pk)
+    await servive.delete(pk)

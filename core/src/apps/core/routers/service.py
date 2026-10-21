@@ -23,39 +23,39 @@ router = APIRouter(prefix="/services", tags=["services"], dependencies=[
 
 @router.get("", response_model=list[ServiceRead])
 async def service_list(
-    limit: int = 100, offset: int = 0, uow: ServiceService = Depends(deps.get_uow_factory)
+    limit: int = 100, offset: int = 0, servive: ServiceService = Depends(deps.get_service(ServiceService))
 ):
     """Вернуть список услуг."""
-    return await uow.get_multi(limit=limit, offset=offset)
+    return await servive.get_multi(limit=limit, offset=offset)
 
 
 @router.get("/{pk}", response_model=ServiceRead)
-async def service_read(pk: int, uow: ServiceService = Depends(deps.get_uow_factory)):
+async def service_read(pk: int, servive: ServiceService = Depends(deps.get_service(ServiceService))):
     """Вернуть услугу по id."""
-    item = await uow.get(pk)
+    item = await servive.get(pk)
     if item is None:
         raise deps.NotFoundError(detail="Услуга не найдена")
     return item
 
 
 @router.post("", response_model=ServiceRead, status_code=201)
-async def service_create(data: ServiceCreate, uow: ServiceService = Depends(deps.get_uow_factory)):
+async def service_create(data: ServiceCreate, servive: ServiceService = Depends(deps.get_service(ServiceService))):
     """Создать услугу."""
-    return await uow.create(data)
+    return await servive.create(data)
 
 
 @router.put("/{pk}", response_model=ServiceRead)
 async def service_update(
-    pk: int, data: ServiceUpdate, uow: ServiceService = Depends(deps.get_uow_factory)
+    pk: int, data: ServiceUpdate, servive: ServiceService = Depends(deps.get_servive_factory)
 ):
     """Обновить услугу."""
-    item = await uow.update(pk, data)
+    item = await servive.update(pk, data)
     if item is None:
         raise deps.NotFoundError(detail="Услуга не найдена")
     return item
 
 
 @router.delete("/{pk}", status_code=204)
-async def service_delete(pk: int, uow: ServiceService = Depends(deps.get_uow_factory)):
+async def service_delete(pk: int, servive: ServiceService = Depends(deps.get_service(ServiceService))):
     """Удалить услугу."""
-    await uow.delete(pk)
+    await servive.delete(pk)

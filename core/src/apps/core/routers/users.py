@@ -29,17 +29,15 @@ router = APIRouter(prefix="/users", tags=["users"], dependencies=[
 
 @router.get("", response_model=list[UserRead])
 async def user_list(
-    limit: int = 100, offset: int = 0, uow_factory=Depends(deps.get_uow_factory)
+    limit: int = 100, offset: int = 0, service: UserService = Depends(deps.get_service(UserService))
 ):
     """Показать список пользователей."""
-    service = UserService(uow_factory=uow_factory)
     return await service.get_multi(limit=limit, offset=offset)
 
 
 @router.get("/{pk}", response_model=UserRead)
-async def user_read(pk: int, uow_factory=Depends(deps.get_uow_factory)):
+async def user_read(pk: int, service: UserService = Depends(deps.get_service(UserService))):
     """Показать одного пользователя по id."""
-    service = UserService(uow_factory=uow_factory)
     user = await service.get(pk)
     if user is None:
         raise deps.NotFoundError(detail="Пользователь не найден")
@@ -49,15 +47,13 @@ async def user_read(pk: int, uow_factory=Depends(deps.get_uow_factory)):
 @router.post("", response_model=UserRead, status_code=201)
 async def user_create(
     payload: UserCreate,
-    current_user: int = Depends(deps.get_current_user),
-    uow_factory=Depends(deps.get_uow_factory),
+    service: UserService = Depends(deps.get_service(UserService))
 ):
     """Создать пользователя.
 
     Текущий ``current_user`` нужен, чтобы ``who_create``/``who_update`` были
     заполнены из контекста. Пароль при выдаче не эскейпится в ``UserRead``.
     """
-    service = UserService(uow_factory=uow_factory)
     return await service.create(payload)
 
 
@@ -65,10 +61,9 @@ async def user_create(
 async def user_update(
     pk: int,
     payload: UserUpdate,
-    uow_factory=Depends(deps.get_uow_factory),
+    service: UserService = Depends(deps.get_service(UserService))
 ):
     """Обновить пользователя."""
-    service = UserService(uow_factory=uow_factory)
     user = await service.update(pk, payload)
     if user is None:
         raise deps.NotFoundError(detail="Пользователь не найден")
@@ -76,7 +71,6 @@ async def user_update(
 
 
 @router.delete("/{pk}", status_code=204)
-async def user_delete(pk: int, uow_factory=Depends(deps.get_uow_factory)):
+async def user_delete(pk: int, service: UserService = Depends(deps.get_service(UserService))):
     """Удалить пользователя."""
-    service = UserService(uow_factory=uow_factory)
     await service.delete(pk)

@@ -25,37 +25,37 @@ router = APIRouter(prefix="/book", tags=["book"], dependencies=[
 
 @router.get("", response_model=list[BookRead])
 async def book_list(
-    limit: int = 100, offset: int = 0, uow: BookService = Depends(deps.get_uow_factory)
+    limit: int = 100, offset: int = 0, servive: BookService = Depends(deps.get_service(BookService))
 ):
     """Показать список книг (записей)."""
-    return await uow.get_multi(limit=limit, offset=offset)
+    return await servive.get_multi(limit=limit, offset=offset)
 
 
 @router.get("/{pk}", response_model=BookRead)
-async def book_read(pk: int, uow: BookService = Depends(deps.get_uow_factory)):
+async def book_read(pk: int, servive: BookService = Depends(deps.get_service(BookService))):
     """Показать одну книгу по id."""
-    item = await uow.get(pk)
+    item = await servive.get(pk)
     if item is None:
         raise deps.NotFoundError(detail="Книга не найдена")
     return item
 
 
 @router.post("", response_model=BookRead, status_code=201)
-async def book_create(data: BookCreate, uow: BookService = Depends(deps.get_uow_factory)):
+async def book_create(data: BookCreate, servive: BookService = Depends(deps.get_service(BookService))):
     """Создать книгу (запись)."""
-    return await uow.create(data)
+    return await servive.create(data)
 
 
 @router.put("/{pk}", response_model=BookRead)
-async def book_update(pk: int, data: BookUpdate, uow: BookService = Depends(deps.get_uow_factory)):
+async def book_update(pk: int, data: BookUpdate, servive: BookService = Depends(deps.get_service(BookService))):
     """Обновить книгу."""
-    item = await uow.update(pk, data)
+    item = await servive.update(pk, data)
     if item is None:
         raise deps.NotFoundError(detail="Книга не найдена")
     return item
 
 
 @router.delete("/{pk}", status_code=204)
-async def book_delete(pk: int, uow: BookService = Depends(deps.get_uow_factory)):
+async def book_delete(pk: int, servive: BookService = Depends(deps.get_service(BookService))):
     """Удалить книгу."""
-    await uow.delete(pk)
+    await servive.delete(pk)

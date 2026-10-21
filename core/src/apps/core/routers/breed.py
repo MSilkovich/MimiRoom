@@ -23,37 +23,37 @@ router = APIRouter(prefix="/breeds", tags=["breeds"], dependencies=[
 
 @router.get("", response_model=list[BreedRead])
 async def breed_list(
-    limit: int = 100, offset: int = 0, uow: BreedService = Depends(deps.get_uow_factory)
+    limit: int = 100, offset: int = 0, servive: BreedService = Depends(deps.get_service(BreedService))
 ):
     """Вернуть список пород."""
-    return await uow.get_multi(limit=limit, offset=offset)
+    return await servive.get_multi(limit=limit, offset=offset)
 
 
 @router.get("/{pk}", response_model=BreedRead)
-async def breed_read(pk: int, uow: BreedService = Depends(deps.get_uow_factory)):
+async def breed_read(pk: int, servive: BreedService = Depends(deps.get_service(BreedService))):
     """Вернуть породу по id."""
-    item = await uow.get(pk)
+    item = await servive.get(pk)
     if item is None:
         raise deps.NotFoundError(detail="Порода не найдена")
     return item
 
 
 @router.post("", response_model=BreedRead, status_code=201)
-async def breed_create(data: BreedCreate, uow: BreedService = Depends(deps.get_uow_factory)):
+async def breed_create(data: BreedCreate, servive: BreedService = Depends(deps.get_service(BreedService))):
     """Создать породу."""
-    return await uow.create(data)
+    return await servive.create(data)
 
 
 @router.put("/{pk}", response_model=BreedRead)
-async def breed_update(pk: int, data: BreedUpdate, uow: BreedService = Depends(deps.get_uow_factory)):
+async def breed_update(pk: int, data: BreedUpdate, servive: BreedService = Depends(deps.get_service(BreedService))):
     """Обновить породу."""
-    item = await uow.update(pk, data)
+    item = await servive.update(pk, data)
     if item is None:
         raise deps.NotFoundError(detail="Порода не найдена")
     return item
 
 
 @router.delete("/{pk}", status_code=204)
-async def breed_delete(pk: int, uow: BreedService = Depends(deps.get_uow_factory)):
+async def breed_delete(pk: int, servive: BreedService = Depends(deps.get_service(BreedService))):
     """Удалить породу."""
-    await uow.delete(pk)
+    await servive.delete(pk)

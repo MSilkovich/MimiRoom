@@ -23,39 +23,39 @@ router = APIRouter(prefix="/storages", tags=["storage"], dependencies=[
 
 @router.get("", response_model=list[StorageRead])
 async def storage_list(
-    limit: int = 100, offset: int = 0, uow: StorageService = Depends(deps.get_uow_factory)
+    limit: int = 100, offset: int = 0, servive: StorageService = Depends(deps.get_service(StorageService))
 ):
     """Вернуть страницу складов."""
-    return await uow.get_multi(limit=limit, offset=offset)
+    return await servive.get_multi(limit=limit, offset=offset)
 
 
 @router.get("/{pk}", response_model=StorageRead)
-async def storage_read(pk: int, uow: StorageService = Depends(deps.get_uow_factory)):
+async def storage_read(pk: int, servive: StorageService = Depends(deps.get_service(StorageService))):
     """Вернуть склад по id."""
-    item = await uow.get(pk)
+    item = await servive.get(pk)
     if item is None:
         raise deps.NotFoundError(detail="Склад не найден")
     return item
 
 
 @router.post("", response_model=StorageRead, status_code=201)
-async def storage_create(data: StorageCreate, uow: StorageService = Depends(deps.get_uow_factory)):
+async def storage_create(data: StorageCreate, servive: StorageService = Depends(deps.get_service(StorageService))):
     """Создать склад."""
-    return await uow.create(data)
+    return await servive.create(data)
 
 
 @router.put("/{pk}", response_model=StorageRead)
 async def storage_update(
-    pk: int, data: StorageUpdate, uow: StorageService = Depends(deps.get_uow_factory)
+    pk: int, data: StorageUpdate, servive: StorageService = Depends(deps.get_service(StorageService))
 ):
     """Обновить склад."""
-    item = await uow.update(pk, data)
+    item = await servive.update(pk, data)
     if item is None:
         raise deps.NotFoundError(detail="Склад не найден")
     return item
 
 
 @router.delete("/{pk}", status_code=204)
-async def storage_delete(pk: int, uow: StorageService = Depends(deps.get_uow_factory)):
+async def storage_delete(pk: int, servive: StorageService = Depends(deps.get_service(StorageService))):
     """Удалить склад."""
-    await uow.delete(pk)
+    await servive.delete(pk)
