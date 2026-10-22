@@ -1,4 +1,4 @@
-"""Глобальные настройки приложения (проект + безопасность)."""
+"""Глобальные настройки приложения."""
 
 from dotenv import load_dotenv
 
@@ -12,7 +12,6 @@ load_dotenv()
 class Settings(BaseSettings):
     PROJECT_NAME: str
     VERSION: str
-    LOG_LEVEL: str
 
 
 settings_app = Settings()

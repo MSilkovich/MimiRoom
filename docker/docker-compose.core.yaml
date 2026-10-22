@@ -16,6 +16,11 @@ services:
       VERSION: ${VERSION}
 
       LOG_LEVEL: ${LOG_LEVEL}
+      LOG_CONSOLE: ${LOG_CONSOLE}
+      LOG_FILE: ${LOG_FILE}
+      LOG_FILE_PATH: ${LOG_FILE_PATH}
+      LOG_FILE_MAX_BYTES: ${LOG_FILE_MAX_BYTES}
+      LOG_FILE_BACKUP_COUNT: ${LOG_FILE_BACKUP_COUNT}
 
       JWT_SECRET_KEY: ${JWT_SECRET_KEY}
       JWT_ALGORITHM: ${JWT_ALGORITHM}
@@ -26,6 +31,8 @@ services:
     restart: unless-stopped
     networks:
       - network-bridge
+    volumes:
+      - ./logs:/logs
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://localhost:${CORE_PORT}/config" ]
       interval: 2s
