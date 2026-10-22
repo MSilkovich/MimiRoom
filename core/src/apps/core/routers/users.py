@@ -70,6 +70,19 @@ async def user_update(
     return user
 
 
+@router.put("/{pk}/link/{msgr}", response_model=UserRead)
+async def link_tg(
+    pk: int,
+    payload: UserUpdate,
+    service: UserService = Depends(deps.get_service(UserService))
+):
+    """Обновить пользователя."""
+    user = await service.update(pk, payload)
+    if user is None:
+        raise deps.NotFoundError(detail="Пользователь не найден")
+    return user
+
+
 @router.delete("/{pk}", status_code=204)
 async def user_delete(pk: int, service: UserService = Depends(deps.get_service(UserService))):
     """Удалить пользователя."""

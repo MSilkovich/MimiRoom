@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING
 
-from sqlalchemy import ForeignKey, String
+from sqlalchemy import BigInteger, ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .base_model import Base
@@ -21,6 +21,12 @@ class User(Base):
     name: Mapped[str] = mapped_column(String(25), nullable=False)
     surname: Mapped[str] = mapped_column(String(40), nullable=False)
     patronymic: Mapped[str | None] = mapped_column(String(40))
+    telegram_id: Mapped[int | None] = mapped_column(
+        BigInteger,
+        unique=True,
+        nullable=True,
+        index=True
+    )
     role_id: Mapped[int | None] = mapped_column(
         "role",
         ForeignKey("role.role_id")
