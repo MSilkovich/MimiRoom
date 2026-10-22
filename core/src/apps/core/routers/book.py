@@ -12,6 +12,7 @@
 
 from fastapi import APIRouter, Depends, Security
 
+from src.exceptions import NotFoundError
 from src.services import BookService
 from src import dependencies as deps
 from src.schemas import BookCreate, BookRead, BookUpdate
@@ -36,7 +37,7 @@ async def book_read(pk: int, servive: BookService = Depends(deps.get_service(Boo
     """Показать одну книгу по id."""
     item = await servive.get(pk)
     if item is None:
-        raise deps.NotFoundError(detail="Книга не найдена")
+        raise NotFoundError(detail="Книга не найдена")
     return item
 
 
@@ -51,7 +52,7 @@ async def book_update(pk: int, data: BookUpdate, servive: BookService = Depends(
     """Обновить книгу."""
     item = await servive.update(pk, data)
     if item is None:
-        raise deps.NotFoundError(detail="Книга не найдена")
+        raise NotFoundError(detail="Книга не найдена")
     return item
 
 

@@ -10,6 +10,7 @@
 
 from fastapi import APIRouter, Depends, Security
 
+from src.exceptions import NotFoundError
 from src.services import StorageService
 from src import dependencies as deps
 from src.schemas import StorageCreate, StorageRead, StorageUpdate
@@ -34,7 +35,7 @@ async def storage_read(pk: int, servive: StorageService = Depends(deps.get_servi
     """Вернуть склад по id."""
     item = await servive.get(pk)
     if item is None:
-        raise deps.NotFoundError(detail="Склад не найден")
+        raise NotFoundError(detail="Склад не найден")
     return item
 
 
@@ -51,7 +52,7 @@ async def storage_update(
     """Обновить склад."""
     item = await servive.update(pk, data)
     if item is None:
-        raise deps.NotFoundError(detail="Склад не найден")
+        raise NotFoundError(detail="Склад не найден")
     return item
 
 

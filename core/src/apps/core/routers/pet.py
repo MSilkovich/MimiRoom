@@ -10,6 +10,7 @@
 
 from fastapi import APIRouter, Depends, Security
 
+from src.exceptions import NotFoundError
 from src.services import PetService
 from src import dependencies as deps
 from src.schemas import PetCreate, PetRead, PetUpdate
@@ -35,7 +36,7 @@ async def pet_read(pk: int, servive: PetService = Depends(deps.get_service(PetSe
     """Вернуть питомца по id."""
     item = await servive.get(pk)
     if item is None:
-        raise deps.NotFoundError(detail="Питомец не найден")
+        raise NotFoundError(detail="Питомец не найден")
     return item
 
 
@@ -50,7 +51,7 @@ async def pet_update(pk: int, data: PetUpdate, servive: PetService = Depends(dep
     """Обновить питомца."""
     item = await servive.update(pk, data)
     if item is None:
-        raise deps.NotFoundError(detail="Питомец не найден")
+        raise NotFoundError(detail="Питомец не найден")
     return item
 
 

@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING
 
-from sqlalchemy import BigInteger, ForeignKey, String
+from sqlalchemy import ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .base_model import Base
@@ -10,6 +10,7 @@ if TYPE_CHECKING:
     from .pet import Pet
     from .role import Role
     from .refresh_token import RefreshToken
+    from src.schemas.user import UserLink
 
 
 class User(Base):
@@ -21,12 +22,6 @@ class User(Base):
     name: Mapped[str] = mapped_column(String(25), nullable=False)
     surname: Mapped[str] = mapped_column(String(40), nullable=False)
     patronymic: Mapped[str | None] = mapped_column(String(40))
-    telegram_id: Mapped[int | None] = mapped_column(
-        BigInteger,
-        unique=True,
-        nullable=True,
-        index=True
-    )
     role_id: Mapped[int | None] = mapped_column(
         "role",
         ForeignKey("role.role_id")
@@ -50,4 +45,11 @@ class User(Base):
 
     refresh_tokens: Mapped[list["RefreshToken"]] = relationship(
         "RefreshToken", back_populates="user", cascade="all, delete-orphan"
+    )
+
+    links: Mapped[list["UserLink"]] = relationship(
+        "UserLink",
+        back_populates="user",
+        cascade="all, delete-orphan",
+        lazy="selectin",
     )
