@@ -2,35 +2,20 @@ from fastapi import Request
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from src.exceptions import PermissionDeniedError, InvalidCredentialsError, UnauthorizedError
+from src.apps.core.logging import get_logger
+
+logger = get_logger(__name__)
 
 
 class ErrorMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         try:
-            response = await call_next(request)
-            return response
-
-        except UnauthorizedError as exc:
-            return JSONResponse(
-                status_code=401,
-                content={"error": "Unauthorized", "message": str(exc.detail)}
-            )
-
-        except InvalidCredentialsError as exc:
-            return JSONResponse(
-                status_code=401,
-                content={"error": "Unauthorized", "message": str(exc.detail)}
-            )
-
-        except PermissionDeniedError as exc:
-            return JSONResponse(
-                status_code=403,
-                content={"error": "Access Denied", "message": str(exc.detail)}
-            )
-
-        except Exception as exc:
+            return await call_next(request)
+        except Exception:
+            # Логируем полный traceback, но никак не возвращаем его клиенту
+            logger.error("Unhandled exception on %s %s",
+                         request.method, request.url)
             return JSONResponse(
                 status_code=500,
-                content={"error": "Unhandled Exception", "message": ""}
+                content={"code": 500, "message": "Внутренняя ошибка сервера"}
             )

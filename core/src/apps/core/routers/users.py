@@ -17,7 +17,7 @@
 from fastapi import APIRouter, Depends, Security
 
 from src import dependencies as deps
-from src.exceptions import NotFoundError
+from src.excpetions.crud import NotFoundError
 from src.schemas.user import UserCreate, UserRead, UserUpdate
 from src.services.user_service import UserService
 from src.middleware.auth import get_current_user, bearer_scheme
@@ -41,7 +41,7 @@ async def user_read(pk: int, service: UserService = Depends(deps.get_service(Use
     """Показать одного пользователя по id."""
     user = await service.get(pk)
     if user is None:
-        raise NotFoundError(detail="Пользователь не найден")
+        raise NotFoundError("Пользователь не найден")
     return user
 
 
@@ -67,7 +67,7 @@ async def user_update(
     """Обновить пользователя."""
     user = await service.update(pk, payload)
     if user is None:
-        raise NotFoundError(detail="Пользователь не найден")
+        raise NotFoundError("Пользователь не найден")
     return user
 
 
@@ -88,5 +88,5 @@ async def link_tg(
     """Привязать соц. сеть msgr пользователя pk."""
     user = await service.update(pk, payload)
     if user is None:
-        raise NotFoundError(detail="Пользователь не найден")
+        raise NotFoundError("Пользователь не найден")
     return user

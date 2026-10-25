@@ -8,7 +8,6 @@ from src.schemas.auth import (
 )
 from src.models import TokenType
 from src.services.auth_service import AuthService
-from src.exceptions import InvalidCredentialsError, InvalidTokenError, UserAlreadyExistsError
 
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -16,10 +15,7 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 @router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
 async def register(payload: RegisterRequest, auth: AuthService = Depends(deps.get_service(AuthService))):
-    try:
-        user = await auth.register(payload)
-    except UserAlreadyExistsError:
-        raise HTTPException(status.HTTP_409_CONFLICT, "User already exists")
+    user = await auth.register(payload)
     return await auth.issue_pair(user.user_id)
 
 
@@ -28,11 +24,7 @@ async def login(payload: TokenRequest, auth: AuthService = Depends(deps.get_serv
     if payload.grant_type != "password":
         raise HTTPException(status.HTTP_400_BAD_REQUEST,
                             "grant_type must be password")
-    try:
-        user_id = await auth.authenticate(payload.username, payload.password)
-    except InvalidCredentialsError:
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED,
-                            "Invalid credentials")
+    user_id = await auth.authenticate(payload.username, payload.password)
     return await auth.issue_pair(user_id)
 
 
@@ -41,10 +33,7 @@ async def refresh(payload: RefreshRequest, auth: AuthService = Depends(deps.get_
     if payload.grant_type != TokenType.REFRESH:
         raise HTTPException(status.HTTP_400_BAD_REQUEST,
                             "grant_type must be refresh")
-    try:
-        return await auth.refresh(payload.refresh_token)
-    except InvalidTokenError as e:
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, str(e))
+    return await auth.refresh(payload.refresh_token)
 
 
 @router.post("/logout", status_code=204)

@@ -9,7 +9,7 @@ from passlib.context import CryptContext
 
 from config.jwt import settings_jwt
 from src.models import User, TokenType
-from src.exceptions import InvalidCredentialsError, InvalidTokenError, UserAlreadyExistsError
+from src.excpetions.auth import InvalidCredentialsError, InvalidTokenError, UserAlreadyExistsError
 from src.context import system_context
 from src.schemas.auth.auth import RegisterRequest
 from src.services.generic_service import UowFactory

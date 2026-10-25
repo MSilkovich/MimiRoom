@@ -17,9 +17,6 @@ async def get_session() -> AsyncIterator[AsyncSession]:
         yield session
 
 
-SessionDep = Annotated[AsyncSession, Depends(get_session)]
-
-
 def get_uow_factory():
     """Фабрика Unit of Work на базе session_factory приложения.
 
@@ -48,7 +45,3 @@ def get_service(service_cls):
         return service_cls(uow_factory)
 
     return _get_service
-
-
-# Обязательная аутентификация
-CurrentUserDep = Annotated[User, Depends(get_current_user)]

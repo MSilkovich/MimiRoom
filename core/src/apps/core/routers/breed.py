@@ -10,7 +10,7 @@
 
 from fastapi import APIRouter, Depends, Security
 
-from src.exceptions import NotFoundError
+from src.excpetions.crud import NotFoundError
 from src.services import BreedService
 from src import dependencies as deps
 from src.schemas import BreedCreate, BreedRead, BreedUpdate
@@ -35,7 +35,7 @@ async def breed_read(pk: int, servive: BreedService = Depends(deps.get_service(B
     """Вернуть породу по id."""
     item = await servive.get(pk)
     if item is None:
-        raise NotFoundError(detail="Порода не найдена")
+        raise NotFoundError("Порода не найдена")
     return item
 
 
@@ -50,7 +50,7 @@ async def breed_update(pk: int, data: BreedUpdate, servive: BreedService = Depen
     """Обновить породу."""
     item = await servive.update(pk, data)
     if item is None:
-        raise NotFoundError(detail="Порода не найдена")
+        raise NotFoundError("Порода не найдена")
     return item
 
 

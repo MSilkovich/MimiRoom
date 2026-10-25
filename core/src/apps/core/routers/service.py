@@ -10,7 +10,7 @@
 
 from fastapi import APIRouter, Depends, Security
 
-from src.exceptions import NotFoundError
+from src.excpetions.crud import NotFoundError
 from src.services import ServiceService
 from src import dependencies as deps
 from src.schemas import ServiceCreate, ServiceRead, ServiceUpdate
@@ -35,7 +35,7 @@ async def service_read(pk: int, servive: ServiceService = Depends(deps.get_servi
     """Вернуть услугу по id."""
     item = await servive.get(pk)
     if item is None:
-        raise NotFoundError(detail="Услуга не найдена")
+        raise NotFoundError("Услуга не найдена")
     return item
 
 
@@ -52,7 +52,7 @@ async def service_update(
     """Обновить услугу."""
     item = await servive.update(pk, data)
     if item is None:
-        raise NotFoundError(detail="Услуга не найдена")
+        raise NotFoundError("Услуга не найдена")
     return item
 
 

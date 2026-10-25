@@ -3,7 +3,7 @@ from typing import Type, TypeVar, Optional, Generic
 from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.exceptions import NotFoundError
+from src.excpetions.crud import NotFoundError, ValidationError
 
 from ..context import get_current_user
 from ..models.base_model import Base
@@ -46,7 +46,7 @@ class SqlAlchemyRepository(AbstractRepository, Generic[ModelType]):
 
     async def update(self, data: dict, **filters) -> ModelType:
         if not data:
-            raise ValueError("update: нет данных для обновления")
+            raise ValidationError("update: нет данных для обновления")
         filters["is_deleted"] = False
         values = dict(data)
         user = get_current_user()
@@ -62,7 +62,7 @@ class SqlAlchemyRepository(AbstractRepository, Generic[ModelType]):
         await self.session.flush()
         if (ret := res.scalar_one_or_none()) is not None:
             return ret
-        raise NotFoundError(detail="Нечего изменять")
+        raise NotFoundError("Нечего изменять")
 
     async def delete_permanent(self, **filters) -> None:
         """Полное удаление записи из бд."""
