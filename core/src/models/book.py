@@ -1,7 +1,7 @@
 from datetime import date as date_type, time as time_type
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Date, ForeignKey, Time
+from sqlalchemy import Date, ForeignKey, Time, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .base_model import Base
@@ -30,6 +30,7 @@ class Book(Base):
         "service",
         ForeignKey("service.service_id")
     )
+    comment: Mapped[str | None] = mapped_column(Text)
 
     pet: Mapped["Pet | None"] = relationship(
         "Pet",

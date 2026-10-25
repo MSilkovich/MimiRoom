@@ -46,7 +46,7 @@ class SqlAlchemyRepository(AbstractRepository, Generic[ModelType]):
 
     async def update(self, data: dict, **filters) -> ModelType:
         if not data:
-            raise ValidationError("update: нет данных для обновления")
+            raise ValidationError("Нет данных для обновления")
         filters["is_deleted"] = False
         values = dict(data)
         user = get_current_user()
@@ -62,7 +62,7 @@ class SqlAlchemyRepository(AbstractRepository, Generic[ModelType]):
         await self.session.flush()
         if (ret := res.scalar_one_or_none()) is not None:
             return ret
-        raise NotFoundError("Нечего изменять")
+        raise NotFoundError("Нечего изменять/удалять")
 
     async def delete_permanent(self, **filters) -> None:
         """Полное удаление записи из бд."""

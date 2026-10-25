@@ -6,8 +6,6 @@
 - POST   /book                   — создать
 - PUT    /book/{id}              — обновить
 - DELETE /book/{id}              — удалить
-
-Примечание: в нашем проекте «книга» — это запись вручную, а не счётчик.
 """
 
 from fastapi import APIRouter, Depends, Security
@@ -28,35 +26,35 @@ router = APIRouter(prefix="/book", tags=["book"], dependencies=[
 async def book_list(
     limit: int = 100, offset: int = 0, servive: BookService = Depends(deps.get_service(BookService))
 ):
-    """Показать список книг (записей)."""
+    """Показать список записей."""
     return await servive.get_multi(limit=limit, offset=offset)
 
 
 @router.get("/{pk}", response_model=BookRead)
 async def book_read(pk: int, servive: BookService = Depends(deps.get_service(BookService))):
-    """Показать одну книгу по id."""
+    """Показать одну запись по id."""
     item = await servive.get(pk)
     if item is None:
-        raise NotFoundError("Книга не найдена")
+        raise NotFoundError("Запись не найдена")
     return item
 
 
 @router.post("", response_model=BookRead, status_code=201)
 async def book_create(data: BookCreate, servive: BookService = Depends(deps.get_service(BookService))):
-    """Создать книгу (запись)."""
+    """Создать запись."""
     return await servive.create(data)
 
 
 @router.put("/{pk}", response_model=BookRead)
 async def book_update(pk: int, data: BookUpdate, servive: BookService = Depends(deps.get_service(BookService))):
-    """Обновить книгу."""
+    """Обновить запись."""
     item = await servive.update(pk, data)
     if item is None:
-        raise NotFoundError("Книга не найдена")
+        raise NotFoundError("Запись не найдена")
     return item
 
 
 @router.delete("/{pk}", status_code=204)
 async def book_delete(pk: int, servive: BookService = Depends(deps.get_service(BookService))):
-    """Удалить книгу."""
+    """Удалить запись."""
     await servive.delete(pk)

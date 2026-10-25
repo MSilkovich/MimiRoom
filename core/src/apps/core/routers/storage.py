@@ -6,6 +6,8 @@
 - POST   /storages              — создать
 - PUT    /storages/{id}         — обновить
 - DELETE /storages/{id}         — удалить
+
+На данной итерации это просто стек наличия на складе с количеством
 """
 
 from fastapi import APIRouter, Depends, Security

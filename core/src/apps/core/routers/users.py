@@ -6,6 +6,7 @@
 - POST   /users                          — создать пользователя
 - PUT    /users/{id}                     — обновить пользователя
 - DELETE /users/{id}                     — удалить пользователя
+TODO: дополнить для link
 """
 
 from fastapi import APIRouter, Depends, Security
@@ -69,6 +70,7 @@ async def user_update(
 async def user_delete(pk: int, service: UserService = Depends(deps.get_service(UserService))):
     """Удалить пользователя."""
     await service.delete(pk)
+
 
 # region link
 

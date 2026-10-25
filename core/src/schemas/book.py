@@ -10,6 +10,7 @@ class BookRead(Base):
     date: date_type | None
     time: time_type | None
     service_id: int | None
+    comment: str | None
 
     created_at: datetime
     updated_at: datetime
@@ -23,6 +24,7 @@ class BookCreate(Base):
     date: date_type | None = None
     time: time_type | None = None
     service_id: int | None = None
+    comment: str | None
 
 
 class BookUpdate(Base):
@@ -31,3 +33,4 @@ class BookUpdate(Base):
     date: date_type | None = None
     time: time_type | None = None
     service_id: int | None = None
+    comment: str | None

@@ -1,4 +1,4 @@
-"""CRUD для видов пород (Breed).
+"""CRUD для пород (Breed).
 
 Путь: /breeds*
 - GET    /breeds              — список
