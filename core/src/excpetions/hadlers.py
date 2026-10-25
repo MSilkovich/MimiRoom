@@ -1,6 +1,7 @@
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 from .base import BaseInnerException
+from .exception_type import ExceptionType
 
 
 def register_exception_handlers(app: FastAPI) -> None:
@@ -20,8 +21,9 @@ def register_exception_handlers(app: FastAPI) -> None:
 
     @app.exception_handler(HTTPException)
     async def _handle_http(request: Request, exc: HTTPException) -> JSONResponse:
-        return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
+        return JSONResponse(status_code=exc.status_code, content={"code": ExceptionType.UNKNOWN_ERROR, "message": exc.detail})
 
     @app.exception_handler(Exception)
     async def _handle_unexpected(request: Request, exc: Exception) -> JSONResponse:
-        return JSONResponse(status_code=500, content={"detail": "Внутренняя ошибка сервера"})
+
+        return JSONResponse(status_code=500, content={"code": ExceptionType.UNKNOWN_ERROR, "message": "Внутренняя ошибка сервера"})
