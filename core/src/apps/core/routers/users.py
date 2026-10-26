@@ -14,7 +14,9 @@ from fastapi import APIRouter, Depends, Security
 from src import dependencies as deps
 from src.excpetions.crud import NotFoundError
 from src.schemas.user import UserCreate, UserRead, UserUpdate
+from src.schemas.user_link import UserLinkCreate, UserLinkRead, UserLinkUpdate
 from src.services.user_service import UserService
+from src.services.user_link_service import UserLinkService
 from src.middleware.auth import get_current_user, bearer_scheme
 
 router = APIRouter(prefix="/users", tags=["users"], dependencies=[
@@ -75,14 +77,10 @@ async def user_delete(pk: int, service: UserService = Depends(deps.get_service(U
 # region link
 
 
-@router.put("/{pk}/link", response_model=UserRead)
-async def link_tg(
-    pk: int,
-    payload: UserUpdate,
-    service: UserService = Depends(deps.get_service(UserService))
+@router.post("/link", response_model=UserLinkRead)
+async def link_messanger(
+    payload: UserLinkCreate,
+    service: UserLinkService = Depends(deps.get_service(UserLinkService))
 ):
-    """Привязать соц. сеть msgr пользователя pk."""
-    user = await service.update(pk, payload)
-    if user is None:
-        raise NotFoundError("Пользователь не найден")
-    return user
+    """Привязать соц. сеть пользователя."""
+    return await service.create(payload)

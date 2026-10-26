@@ -6,6 +6,7 @@ from .breed import BreedRead, BreedCreate, BreedUpdate
 from .service import ServiceRead, ServiceCreate, ServiceUpdate
 from .storage import StorageRead, StorageCreate, StorageUpdate
 from .user import UserRead, UserCreate, UserUpdate
+from .user_link import UserLinkUpdate, UserLinkRead, UserLinkCreate
 from .pet import PetRead, PetCreate, PetUpdate
 from .service_consumable import (
     ServiceConsumableRead,
@@ -46,4 +47,7 @@ __all__ = [
     "BookRead",
     "BookCreate",
     "BookUpdate",
+    "UserLinkCreate",
+    "UserLinkRead",
+    "UserLinkUpdate"
 ]

@@ -9,6 +9,7 @@ from .breed_repository import BreedRepository
 from .service_repository import ServiceRepository
 from .storage_repository import StorageRepository
 from .user_repository import UserRepository
+from .user_link_repository import UserLinkRepository
 from .pet_repository import PetRepository
 from .service_consumable_repository import ServiceConsumableRepository
 from .book_repository import BookRepository
@@ -26,6 +27,7 @@ __all__ = [
     "ServiceRepository",
     "StorageRepository",
     "UserRepository",
+    "UserLinkRepository",
     "PetRepository",
     "ServiceConsumableRepository",
     "BookRepository",
