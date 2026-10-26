@@ -1,10 +1,5 @@
-from typing import NewType
-
-from pydantic import BaseModel
-
-PyModel = NewType("PyModel", BaseModel)
+from pydantic import BaseModel, ConfigDict
 
 
 class Base(BaseModel):
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

@@ -1,4 +1,4 @@
-from .base_schema import Base, PyModel
+from .base_schema import Base
 from .measure_unit import MeasureUnitRead, MeasureUnitCreate, MeasureUnitUpdate
 from .pet_type import PetTypeRead, PetTypeCreate, PetTypeUpdate
 from .role import RoleRead, RoleCreate, RoleUpdate
@@ -16,7 +16,6 @@ from .book import BookRead, BookCreate, BookUpdate
 
 __all__ = [
     "Base",
-    "PyModel",
     "MeasureUnitRead",
     "MeasureUnitCreate",
     "MeasureUnitUpdate",
@@ -48,4 +47,3 @@ __all__ = [
     "BookCreate",
     "BookUpdate",
 ]
-

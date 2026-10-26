@@ -14,13 +14,13 @@ class UserLinkRead(Base):
 
 
 class UserLinkCreate(Base):
-    user_id: int
+    user_id: int = Field(..., examples=[1])
     provider: Provider
-    external_id: str = Field(..., max_length=64)
+    external_id: str = Field(..., max_length=64, examples=["123456789"])
     options: dict[str, Any] = Field(default_factory=dict)
 
 
 class UserLinkUpdate(Base):
     provider: Provider
-    external_id: str = Field(..., max_length=64)
+    external_id: str = Field(..., max_length=64, examples=["123456789"])
     options: dict[str, Any] = Field(default_factory=dict)
