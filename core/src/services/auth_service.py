@@ -82,7 +82,7 @@ class AuthService:
                 if await uow.users.get_single(login=requst.login):
                     raise UserAlreadyExistsError()
                 requst.password = self.hash_password(requst.password)
-                # TODO: role_id ставить user тк на регистрацию нельзя привиллегии давать
+                # TODO: role ставить client тк на регистрацию нельзя привиллегии давать
                 user = await uow.users.create(requst.model_dump())
                 await uow.commit()
         return user

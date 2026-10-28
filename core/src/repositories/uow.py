@@ -4,7 +4,6 @@ from .base_uow import UnitOfWork
 from ..models import (
     MeasureUnit,
     PetType,
-    Role,
     Breed,
     Service,
     Storage,
@@ -17,7 +16,6 @@ from ..models import (
 )
 from .measure_unit_repository import MeasureUnitRepository
 from .pet_type_repository import PetTypeRepository
-from .role_repository import RoleRepository
 from .breed_repository import BreedRepository
 from .service_repository import ServiceRepository
 from .storage_repository import StorageRepository
@@ -46,7 +44,6 @@ class SqlAlchemyUnitOfWork(UnitOfWork):
 
         self.measure_units = MeasureUnitRepository(self.session)
         self.pet_types = PetTypeRepository(self.session)
-        self.roles = RoleRepository(self.session)
         self.breeds = BreedRepository(self.session)
         self.services = ServiceRepository(self.session)
         self.storages = StorageRepository(self.session)
@@ -60,7 +57,6 @@ class SqlAlchemyUnitOfWork(UnitOfWork):
         self._repositories = {
             MeasureUnit: self.measure_units,
             PetType: self.pet_types,
-            Role: self.roles,
             Breed: self.breeds,
             Service: self.services,
             Storage: self.storages,

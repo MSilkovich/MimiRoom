@@ -1,7 +1,6 @@
 from .base_schema import Base
 from .measure_unit import MeasureUnitRead, MeasureUnitCreate, MeasureUnitUpdate
 from .pet_type import PetTypeRead, PetTypeCreate, PetTypeUpdate
-from .role import RoleRead, RoleCreate, RoleUpdate
 from .breed import BreedRead, BreedCreate, BreedUpdate
 from .service import ServiceRead, ServiceCreate, ServiceUpdate
 from .storage import StorageRead, StorageCreate, StorageUpdate
@@ -23,9 +22,6 @@ __all__ = [
     "PetTypeRead",
     "PetTypeCreate",
     "PetTypeUpdate",
-    "RoleRead",
-    "RoleCreate",
-    "RoleUpdate",
     "BreedRead",
     "BreedCreate",
     "BreedUpdate",

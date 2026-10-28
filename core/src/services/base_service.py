@@ -15,6 +15,7 @@ class BaseService(GenericService[ModelType, CreateSchemaType, UpdateSchemaType])
     репозиторий по классу модели и фиксирует изменения через ``uow.commit()``.
     Первичный ключ берётся из репозитория (доменный, например ``user_id``).
     """
+    # TODO: интегрировать с PermissionRule (они готовые будут спускаться сверху и передаваться как необязательный аргумент)
 
     async def create(self, data: CreateSchemaType) -> ModelType:
         async with self.uow_factory() as uow:
@@ -53,4 +54,3 @@ class BaseService(GenericService[ModelType, CreateSchemaType, UpdateSchemaType])
         async with self.uow_factory() as uow:
             repo = uow.repository(self.model)
             return await repo.get_multi(order=order, limit=limit, offset=offset)
-

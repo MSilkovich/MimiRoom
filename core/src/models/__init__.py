@@ -1,7 +1,6 @@
 from .base_model import Base
 from .measure_unit import MeasureUnit
 from .pet_type import PetType
-from .role import Role
 from .breed import Breed
 from .service import Service
 from .storage import Storage
@@ -17,7 +16,6 @@ __all__ = [
     "Base",
     "MeasureUnit",
     "PetType",
-    "Role",
     "Breed",
     "Service",
     "Storage",

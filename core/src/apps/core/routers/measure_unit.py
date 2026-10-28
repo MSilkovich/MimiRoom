@@ -11,6 +11,9 @@
 from fastapi import APIRouter, Depends, Security
 
 from src.excpetions.crud import NotFoundError
+from src.permissions.enums.permissions import Permission
+from src.permissions.enums.scope import Scope
+from src.permissions.permission_rule import PermissionRule
 from src.middleware.auth import get_current_user, bearer_scheme
 from src.services import MeasureUnitService
 from src import dependencies as deps
@@ -64,6 +67,12 @@ async def measure_unit_update(
 
 
 @router.delete("/{pk}", status_code=204)
-async def measure_unit_delete(pk: int, servive: MeasureUnitService = Depends(deps.get_service(MeasureUnitService))):
+async def measure_unit_delete(
+    pk: int,
+    servive: MeasureUnitService = Depends(
+        deps.get_service(MeasureUnitService)),
+    rule: PermissionRule = Depends(deps.require_perm(
+        Permission.PET_DELETE, Scope.OWN))  # WARNING: !!! другой perm
+):
     """Удалить измерение."""
     await servive.delete(pk)
