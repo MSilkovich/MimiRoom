@@ -1,0 +1,11 @@
+*.mo
+*.pyc
+.env
+.env.*
+/.idea/
+/.ruff_cache/
+/.venv/
+__pycache__/
+**/*.log
+*vscode
+*venv
