@@ -4,7 +4,7 @@ import asyncio
 import logging
 from typing import cast
 
-from aiogram import Bot, Dispatcher
+from aiogram import Bot, Dispatcher, html
 from aiogram.client.default import DefaultBotProperties
 from aiogram.client.session.aiohttp import AiohttpSession
 from aiogram.client.telegram import PRODUCTION, TEST
@@ -14,6 +14,9 @@ from aiogram.webhook.aiohttp_server import (
     ip_filter_middleware,
     setup_application,
 )
+from aiogram.enums import ParseMode
+from aiogram.filters import CommandStart
+from aiogram.types import Message
 from aiogram.webhook.security import DEFAULT_TELEGRAM_NETWORKS, IPFilter
 from aiohttp import web
 from aiohttp.typedefs import Middleware
@@ -52,16 +55,17 @@ async def shutdown(dispatcher: Dispatcher) -> None:  # noqa: ARG001
 
 async def main() -> None:
     settings = Settings()
-
+    # для впн
+    proxy_url = "http://127.0.0.1:10809"
     # TelegramLocalBotAPIServer
     # api = TelegramAPIServer.from_base("http://telegram-bot-api:8081")
     # api = TelegramAPIServer.from_base("http://localhost:8081")
     api = TEST if settings.test_server is True else PRODUCTION
-
+    session = AiohttpSession(proxy=proxy_url, api=api)
     bot = Bot(
         token=settings.bot_token.get_secret_value(),
-        session=AiohttpSession(api=api),
-        default=DefaultBotProperties(parse_mode="HTML"),
+        session=session,
+        default=DefaultBotProperties(parse_mode="HTML")
     )
 
     dp = Dispatcher(

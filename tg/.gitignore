@@ -1,6 +1,6 @@
 *.mo
 *.pyc
-.env
+app/bot/.env
 .env.*
 /.idea/
 /.ruff_cache/
