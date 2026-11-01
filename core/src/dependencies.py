@@ -57,7 +57,7 @@ def require_perm(perm: Permission, min_scope: Scope = Scope.OWN):
     async def _checker(user: User = Depends(get_current_user)) -> PermissionRule:
         scope = get_scope(user.permission_mask, perm)
         if not scope.allows(min_scope):
-            raise PermissionDeniedError()  # TODO: подумать
+            raise PermissionDeniedError()
         owner_id = user.user_id if scope == Scope.OWN else None
         return PermissionRule(permission=perm, scope=scope, owner_id=owner_id)
     return _checker

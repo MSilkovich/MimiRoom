@@ -11,6 +11,11 @@ services:
       file: docker-compose.core.yaml
       service: core
 
+  tg:
+    extends:
+      file: docker-compose.tg.yaml
+      service: tg
+
 volumes:
   postgres-data:
 
