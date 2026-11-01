@@ -24,15 +24,16 @@ target_metadata = Base.metadata
 # here we allow ourselves to pass interpolation vars to alembic.ini
 # from the host env
 section = config.config_ini_section
-load_dotenv("../docker/.env")
+
+load_dotenv("./.env.alembic")
+
 # NOTE: os.environ["SMTH"] вызовет KeyError в случае отсутствия
 config.set_section_option(section, "DB_USER", os.environ["POSTGRES_USER"])
 config.set_section_option(section, "DB_PASSWORD",
                           os.environ["POSTGRES_PASSWORD"])
 config.set_section_option(section, "DB_DB", os.environ["POSTGRES_DB"])
 config.set_section_option(section, "DB_HOST",
-                          # os.environ["POSTGRES_HOST"]) # FIXME: непонятки с хостом
-                          "localhost")
+                          os.environ["POSTGRES_HOST"])
 config.set_section_option(section, "DB_PORT", os.environ["POSTGRES_PORT"])
 config.set_section_option(section, "DRIVER", "postgresql")
 
