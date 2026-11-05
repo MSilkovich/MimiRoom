@@ -28,8 +28,8 @@ RUN pip install --no-index --find-links=/wheels -r requirements.txt
 
 COPY ./ ./
 
-ARG CORE_PORT
-ENV CORE_PORT=${CORE_PORT}
+ARG ENGINE_PORT
+ENV ENGINE_PORT=${ENGINE_PORT}
 
 ENTRYPOINT ["sh", "-c"]
-CMD ["exec uvicorn src.apps.core.main:app --host 0.0.0.0 --port ${CORE_PORT}"]
+CMD ["exec uvicorn src.apps.engine.main:app --host 0.0.0.0 --port ${ENGINE_PORT}"]

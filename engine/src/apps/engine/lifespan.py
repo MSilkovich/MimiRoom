@@ -1,8 +1,10 @@
+import asyncio
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
-from src.apps.engine.logging import setup_logging, get_logger
+from src.logging import setup_logging, get_logger
 from config.project_config import settings_app
+from src.services import ensure_consumer_group, run_consumer, close_redis
 
 
 @asynccontextmanager
@@ -33,6 +35,16 @@ async def lifespan(app: FastAPI):
                               |___/                         
                 """)
 
-    yield
+    try:
+        await ensure_consumer_group()
+        consumer_task = asyncio.create_task(run_consumer())
 
-    # shutdown
+        yield
+    finally:
+        # shutdown
+        consumer_task.cancel()
+        try:
+            await consumer_task
+        except asyncio.CancelledError:
+            pass
+        await close_redis()

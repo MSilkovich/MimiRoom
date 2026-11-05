@@ -3,10 +3,7 @@ import logging
 from fastapi import FastAPI
 
 from config.project_config import settings_app
-from src.apps.core.routes import get_apps_router
-from src.excpetions.hadlers import register_exception_handlers
-from src.middleware.auth import AuthMiddleware
-from src.middleware.error import ErrorMiddleware
+from src.apps.engine.routes import get_apps_router
 from .lifespan import lifespan
 
 
@@ -19,16 +16,9 @@ def get_application() -> FastAPI:
         description="""
 ## О приложении
 
-API для информационной системы груминг-салона MiMiRoom:
-запись питомцев на услуги, управление мастерами, складом расходников
-и справочниками (породы, типы питомцев, единицы измерения).
-
-Система построена вокруг **записей (bookings)**: клиент выбирает услугу,
-мастера и время; услуга автоматически резервирует необходимые материалы
-со склада согласно норме расхода.
-
-Авторизация:
-Access-токен передаётся в заголовке `Authorization: Bearer <token>`.
+Сервис обработки сообщений пользователей через разные каналы
+Адаптеры (например, TG бот, бот в Max или ВК) пересылают сообщение пользователя сюда,
+ИИ обрабатывает ответ, при необходимости вызывает tools и возвращает ответ
 """,
         contact={
             "name": "Команда поддержки",
@@ -39,54 +29,13 @@ Access-токен передаётся в заголовке `Authorization: Bea
         },
         openapi_tags=[
             {
-                "name": "auth",
-                "description": "Регистрация, вход, обновление и отзыв токенов. ",
-            },
-            {
-                "name": "users",
-                "description": "Профиль текущего пользователя и привязки к внешним провайдерам.",
-            },
-            {
-                "name": "pets",
-                "description": "Питомцы клиентов: создание, редактирование, привязка к владельцу и породе.",
-            },
-            {
-                "name": "breeds",
-                "description": "Справочник пород. Каждая порода относится к типу питомца.",
-            },
-            {
-                "name": "pet-types",
-                "description": "Справочник типов питомцев (собака, кошка, ...).",
-            },
-            {
-                "name": "services",
-                "description": "Услуги клиники: цена, длительность, порода и список расходников. "
-                "При создании услуги можно сразу передать материалы со склада.",
-            },
-            {
-                "name": "storage",
-                "description": "Склад: материалы, единицы измерения и остатки.",
-            },
-            {
-                "name": "measure-units",
-                "description": "Справочник единиц измерения (мл, г, шт, ...).",
-            },
-            {
-                "name": "book",
-                "description": "Записи на услуги: питомец, мастер, дата/время, услуга, комментарий.",
+                "name": "staff",
+                "description": "Служебные ручки",
             },
         ],
     )
 
     application.include_router(get_apps_router())
-
-    # добавляется первым = внутренний слой
-    application.add_middleware(ErrorMiddleware)
-    # добавляется последним = внешний слой
-    application.add_middleware(AuthMiddleware)
-    # TODO: ErrorMiddleware
-
-    register_exception_handlers(app=application)
 
     return application
 
