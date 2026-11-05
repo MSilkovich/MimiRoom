@@ -34,7 +34,7 @@ services:
     volumes:
       - ./logs:/logs
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:${CORE_PORT}/config" ]
+      test: [ "CMD", "curl", "-f", "http://localhost:${CORE_PORT}/healthcheck" ]
       interval: 2s
       timeout: 10s
       retries: 5

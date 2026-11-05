@@ -6,6 +6,11 @@ services:
       file: docker-compose.postgres.yaml
       service: postgres
 
+  redis:
+    extends:
+      file: docker-compose.redis.yaml
+      service: redis
+
   core:
     extends:
       file: docker-compose.core.yaml
@@ -16,8 +21,14 @@ services:
       file: docker-compose.tg.yaml
       service: tg
 
+  ai-engine:
+    extends:
+      file: docker-compose.ai.yaml
+      service: ai-engine
+
 volumes:
   postgres-data:
+  redis-data:
 
 networks:
   network-bridge:
