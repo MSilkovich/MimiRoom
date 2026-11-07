@@ -4,6 +4,8 @@ from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.excpetions.crud import NotFoundError, ValidationError
+from src.permissions.enums.scope import Scope
+from src.permissions.permission_rule import PermissionRule
 
 from ..context import get_current_user
 from ..models.base_model import Base
@@ -23,6 +25,8 @@ class SqlAlchemyRepository(AbstractRepository, Generic[ModelType]):
     Поля аудита (who_create / who_update) заполняются автоматически из
     контекста текущего пользователя (см. src/context.py), который выставляется
     на уровне midleware. Так репозиторий знает, от чьего имени идёт изменение.
+
+    Методы получают сверху опциональные правила доступа, реализуйте проверки здесь
     """
 
     def __init__(self, model: Type[ModelType], session: AsyncSession):
@@ -33,7 +37,8 @@ class SqlAlchemyRepository(AbstractRepository, Generic[ModelType]):
     def pk_name(self) -> str:
         return self.model.__mapper__.primary_key[0].name
 
-    async def create(self, data: dict) -> ModelType:
+    async def create(self, data: dict, rule: PermissionRule | None = None) -> ModelType:
+        # не обязательно проверять, это уже долно стрельнуть в ручке
         user = get_current_user()
         instance = self.model(**data)
         if hasattr(instance, "who_create"):
@@ -44,7 +49,9 @@ class SqlAlchemyRepository(AbstractRepository, Generic[ModelType]):
         await self.session.refresh(instance)
         return instance
 
-    async def update(self, data: dict, **filters) -> ModelType:
+    async def update(self, data: dict, rule: PermissionRule | None = None, **filters) -> ModelType:
+        if rule is not None and rule.scope == Scope.OWN:
+            filters["who_create"] = rule.owner_id
         if not data:
             raise ValidationError("Нет данных для обновления")
         filters["is_deleted"] = False
@@ -64,17 +71,25 @@ class SqlAlchemyRepository(AbstractRepository, Generic[ModelType]):
             return ret
         raise NotFoundError("Нечего изменять/удалять")
 
-    async def delete_permanent(self, **filters) -> None:
+    async def delete_permanent(self, rule: PermissionRule | None = None, **filters) -> None:
         """Полное удаление записи из бд."""
+        if rule is not None and rule.scope == Scope.OWN:
+            filters["who_create"] = rule.owner_id
         await self.session.execute(delete(self.model).filter_by(**filters))
 
-    async def delete(self, **filters) -> None:
+    async def delete(self, rule: PermissionRule | None = None, **filters) -> None:
         """Удаление по умолчанию = soft delete, через пометку self.is_deleted=True"""
+        if rule is not None and rule.scope == Scope.OWN:
+            filters["who_create"] = rule.owner_id
         await self.update({"is_deleted": True}, **filters)
 
-    async def get_single(self, **filters) -> Optional[ModelType] | None:
+    async def get_single(self, rule: PermissionRule | None = None, **filters) -> Optional[ModelType] | None:
         filters["is_deleted"] = False
-        row = await self.session.execute(select(self.model).filter_by(**filters))
+        smth = select(self.model)
+        if rule is not None and rule.scope == Scope.OWN:
+            smth = smth.where(rule.sql_filter(self.model.who_create))
+        smth = smth.filter_by(**filters)
+        row = await self.session.execute(smth)
         return row.scalar_one_or_none()
 
     async def get_multi(
@@ -82,12 +97,16 @@ class SqlAlchemyRepository(AbstractRepository, Generic[ModelType]):
         order: str | None = None,
         limit: int = 100,
         offset: int = 0,
+        rule: PermissionRule | None = None,
         **filters
     ) -> list[ModelType]:
         filters["is_deleted"] = False
         order_column = getattr(self.model, order) if order else getattr(
             self.model, self.pk_name)
-        stmt = select(self.model).filter_by(**filters).order_by(
+        smth = select(self.model)
+        if rule is not None and rule.scope == Scope.OWN:
+            smth = smth.where(rule.sql_filter(self.model.who_create))
+        smth = smth.filter_by(**filters).order_by(
             order_column).limit(limit).offset(offset)
-        row = await self.session.execute(stmt)
+        row = await self.session.execute(smth)
         return list(row.scalars().all())

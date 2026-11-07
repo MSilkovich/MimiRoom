@@ -47,10 +47,9 @@ async def user_create(
     payload: UserCreate,
     service: UserService = Depends(deps.get_service(UserService))
 ):
-    """Создать пользователя.
-
-    Текущий ``current_user`` нужен, чтобы ``who_create``/``who_update`` были
-    заполнены из контекста. Пароль при выдаче не эскейпится в ``UserRead``.
+    """
+    Создать пользователя.
+    По умолчанию - CLIENT.
     """
     return await service.create(payload)
 

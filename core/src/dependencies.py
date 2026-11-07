@@ -53,7 +53,18 @@ def get_service(service_cls):
 
 
 def require_perm(perm: Permission, min_scope: Scope = Scope.OWN):
-    """Проверяет право и возвращает правило доступа."""
+    """Проверяет уровень доступа и возвращает правило доступа.
+
+    Args:
+        perm: необходимое правило
+        min_scope: минимальный уровень правила
+
+    Returns:
+        PermissionRule: объект правила доступа.
+
+    Raises:
+        PermissionDeniedError: Если уровень права доступа недостаточен.
+    """
     async def _checker(user: User = Depends(get_current_user)) -> PermissionRule:
         scope = get_scope(user.permission_mask, perm)
         if not scope.allows(min_scope):

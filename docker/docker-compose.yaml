@@ -16,15 +16,15 @@ services:
       file: docker-compose.core.yaml
       service: core
 
-  tg:
-    extends:
-      file: docker-compose.tg.yaml
-      service: tg
+  # tg:
+  #   extends:
+  #     file: docker-compose.tg.yaml
+  #     service: tg
 
-  ai-engine:
-    extends:
-      file: docker-compose.ai.yaml
-      service: ai-engine
+  # ai-engine:
+  #   extends:
+  #     file: docker-compose.ai.yaml
+  #     service: ai-engine
 
 volumes:
   postgres-data:

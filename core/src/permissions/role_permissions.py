@@ -1,6 +1,7 @@
 from .bitmask import grant
 from .enums.permissions import Permission as P
 from .enums.scope import Scope
+from .enums.roles import Role
 
 
 def _admin() -> int:
@@ -10,38 +11,56 @@ def _admin() -> int:
     return m
 
 
-# TODO: вручную перелопатить
-ROLE_MASK: dict[str, int] = {
-    "admin": _admin(),
+ROLE_MASK: dict[Role, int] = {
+    Role.ADMIN: _admin(),
 
-    "manager": grant(
-        0,
-        P.USER_READ,
-        P.BREED_READ, P.BREED_WRITE,
-        P.SERVICE_READ, P.SERVICE_WRITE, P.SERVICE_DELETE,
-        P.STORAGE_READ, P.STORAGE_WRITE,
-        P.SERVICE_CONSUMABLE_WRITE,
-        P.BOOK_READ, P.BOOK_WRITE, P.BOOK_CANCEL,
-        P.PET_READ, P.PET_WRITE,
+    # менеджер: весь бизнес-контур, пользователи только читаются
+    Role.MANAGER: grant(
+        grant(
+            0,
+            # пользователи: только читать
+            P.USER_READ,
+            # справочники: читать + вести, но не удалять
+            P.DICTIONARIES_READ, P.DICTIONARIES_WRITE,
+            # услуги: полный цикл
+            P.SERVICE_READ, P.SERVICE_WRITE, P.SERVICE_DELETE,
+            # склад: читать + вести, но не удалять
+            P.STORAGE_READ, P.STORAGE_WRITE,
+            # брони: читать/создавать/отменять любые (жёсткое удаление — админ)
+            P.BOOK_READ, P.BOOK_WRITE, P.BOOK_CANCEL,
+            # питомцы: читать/править любых (удаление — админ/клиент)
+            P.PET_READ, P.PET_WRITE,
+            scope=Scope.ALL,
+        ),
         scope=Scope.ALL,
     ),
 
-    # ваш пример: читаем всех питомцев и записи, меняем только своих
-    "groomer": grant(
+    # грумер: видит всех питомцев, работает только со своими записями
+    Role.GROOMER: grant(
         grant(
             0,
-            P.BREED_READ, P.SERVICE_READ, P.STORAGE_READ,
-            P.PET_READ, P.BOOK_READ,
+            # справочники/каталог/склад — только читать, зато всё
+            P.DICTIONARIES_READ,
+            P.SERVICE_READ,
+            P.STORAGE_READ,
+            # питомцев видит всех (нужно перед стрижкой)
+            P.PET_READ,
             scope=Scope.ALL,
         ),
-        P.PET_WRITE, P.BOOK_WRITE, P.BOOK_CANCEL,
+        # со своими записями и со своими питомцами — полный цикл
+        P.BOOK_READ, P.BOOK_WRITE, P.BOOK_CANCEL,
+        P.PET_WRITE,
         scope=Scope.OWN,
     ),
 
-    # ваш пример: всё со своими, чужие даже не читаем
-    "client": grant(
-        0,
-        P.BREED_READ, P.SERVICE_READ,
+    # клиент: только своё, справочники и каталог — читать
+    Role.CLIENT: grant(
+        grant(
+            0,
+            P.DICTIONARIES_READ,
+            P.SERVICE_READ,
+            scope=Scope.ALL,
+        ),
         P.PET_READ, P.PET_WRITE, P.PET_DELETE,
         P.BOOK_READ, P.BOOK_WRITE, P.BOOK_CANCEL,
         scope=Scope.OWN,

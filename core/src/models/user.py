@@ -1,8 +1,10 @@
 from typing import TYPE_CHECKING
 
-from sqlalchemy import BigInteger, ForeignKey, String
+from sqlalchemy import BigInteger, ForeignKey, String, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy import Enum as SAEnum
+
+from src.permissions.role_permissions import ROLE_MASK
 
 from .base_model import Base
 
@@ -32,8 +34,9 @@ class User(Base):
     )
     permission_mask: Mapped[int] = mapped_column(
         BigInteger,
-        default=0,
         nullable=False,
+        default=ROLE_MASK[Role.CLIENT],
+        server_default=text(str(ROLE_MASK[Role.CLIENT]))
     )
 
     pets: Mapped[list["Pet"]] = relationship(

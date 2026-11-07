@@ -12,6 +12,7 @@ from fastapi import APIRouter, Depends, Security
 
 from src.excpetions.crud import NotFoundError
 from src.permissions.enums.permissions import Permission
+from src.permissions.enums.roles import Role
 from src.permissions.enums.scope import Scope
 from src.permissions.permission_rule import PermissionRule
 from src.middleware.auth import get_current_user, bearer_scheme
@@ -36,7 +37,11 @@ async def measure_unit_list(
 
 
 @router.get("/{pk}", response_model=MeasureUnitRead)
-async def measure_unit_read(pk: int, servive: MeasureUnitService = Depends(deps.get_service(MeasureUnitService))):
+async def measure_unit_read(
+    pk: int,
+    servive: MeasureUnitService = Depends(
+        deps.get_service(MeasureUnitService))
+):
     """Вернуть одно измерение по id."""
     item = await servive.get(pk)
     if item is None:
@@ -47,7 +52,8 @@ async def measure_unit_read(pk: int, servive: MeasureUnitService = Depends(deps.
 @router.post("", response_model=MeasureUnitRead, status_code=201)
 async def measure_unit_create(
     data: MeasureUnitCreate,
-    servive: MeasureUnitService = Depends(deps.get_service(MeasureUnitService))
+    servive: MeasureUnitService = Depends(
+        deps.get_service(MeasureUnitService))
 ):
     """Создать новое измерение."""
     return await servive.create(data)
@@ -70,9 +76,7 @@ async def measure_unit_update(
 async def measure_unit_delete(
     pk: int,
     servive: MeasureUnitService = Depends(
-        deps.get_service(MeasureUnitService)),
-    rule: PermissionRule = Depends(deps.require_perm(
-        Permission.PET_DELETE, Scope.OWN))  # WARNING: !!! другой perm
+        deps.get_service(MeasureUnitService))
 ):
     """Удалить измерение."""
     await servive.delete(pk)

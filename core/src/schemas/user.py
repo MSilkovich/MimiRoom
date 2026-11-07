@@ -1,5 +1,7 @@
 from datetime import datetime
 
+from src.permissions.enums.roles import Role
+
 from .base_schema import Base
 
 
@@ -9,7 +11,7 @@ class UserRead(Base):
     name: str
     surname: str
     patronymic: str | None
-    role_id: int | None
+    role: str
 
     created_at: datetime
     updated_at: datetime
@@ -23,7 +25,6 @@ class UserCreate(Base):
     name: str
     surname: str
     patronymic: str | None = None
-    role_id: int | None = None
 
 
 class UserUpdate(Base):
@@ -32,4 +33,7 @@ class UserUpdate(Base):
     name: str | None = None
     surname: str | None = None
     patronymic: str | None = None
-    role_id: int | None = None
+
+
+class UserRoleUpdate(Base):
+    role: Role | None = None

@@ -32,6 +32,17 @@ SYSTEM_USER = User(
     surname="Guest",
 )
 
+
+def fake_user_factory(id: int) -> User:
+    return SYSTEM_USER if id == SYSTEM_USER_ID else User(
+        user_id=id,
+        login="Anonymous",
+        password="",
+        name="Anonymous",
+        surname="Anonymous",
+    )
+
+
 current_user: ContextVar[User | None] = ContextVar(
     "current_user", default=None)
 
@@ -47,7 +58,7 @@ def set_current_user(user: User | None) -> Token:
 
 
 @contextmanager
-def system_context():
+def system_context(fake_user_id: int = SYSTEM_USER_ID):
     """Выполнить блок от имени системного пользователя.
 
     Нужен для служебных операций (регистрация, выдача/ротация/отзыв токенов),
@@ -55,7 +66,7 @@ def system_context():
     Guarded-репозиторий увидит непустой контекст и не заблокирует запись, но
     поля аудита (who_create/who_update) останутся пустыми.
     """
-    token = current_user.set(SYSTEM_USER)
+    token = current_user.set(fake_user_factory(fake_user_id))
     try:
         yield
     finally:
