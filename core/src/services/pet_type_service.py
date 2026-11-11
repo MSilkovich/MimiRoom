@@ -1,6 +1,6 @@
 from ..models.pet_type import PetType
 from ..schemas import PetTypeCreate, PetTypeUpdate
-from .base_service import BaseService
+from .base import BaseService
 
 
 class PetTypeService(BaseService[PetType, PetTypeCreate, PetTypeUpdate]):

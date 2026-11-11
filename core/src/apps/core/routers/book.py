@@ -11,7 +11,7 @@
 from fastapi import APIRouter, Depends, Security
 
 from src.excpetions.crud import NotFoundError
-from src.services import BookService
+from src.services import BookServiceService
 from src import dependencies as deps
 from src.schemas import BookCreate, BookRead, BookUpdate
 from src.middleware.auth import get_current_user, bearer_scheme
@@ -24,14 +24,14 @@ router = APIRouter(prefix="/book", tags=["book"], dependencies=[
 
 @router.get("", response_model=list[BookRead])
 async def book_list(
-    limit: int = 100, offset: int = 0, servive: BookService = Depends(deps.get_service(BookService))
+    limit: int = 100, offset: int = 0, servive: BookServiceService = Depends(deps.get_service(BookServiceService))
 ):
     """Показать список записей."""
     return await servive.get_multi(limit=limit, offset=offset)
 
 
 @router.get("/{pk}", response_model=BookRead)
-async def book_read(pk: int, servive: BookService = Depends(deps.get_service(BookService))):
+async def book_read(pk: int, servive: BookServiceService = Depends(deps.get_service(BookServiceService))):
     """Показать одну запись по id."""
     item = await servive.get(pk)
     if item is None:
@@ -40,13 +40,13 @@ async def book_read(pk: int, servive: BookService = Depends(deps.get_service(Boo
 
 
 @router.post("", response_model=BookRead, status_code=201)
-async def book_create(data: BookCreate, servive: BookService = Depends(deps.get_service(BookService))):
+async def book_create(data: BookCreate, servive: BookServiceService = Depends(deps.get_service(BookServiceService))):
     """Создать запись."""
     return await servive.create(data)
 
 
 @router.put("/{pk}", response_model=BookRead)
-async def book_update(pk: int, data: BookUpdate, servive: BookService = Depends(deps.get_service(BookService))):
+async def book_update(pk: int, data: BookUpdate, servive: BookServiceService = Depends(deps.get_service(BookServiceService))):
     """Обновить запись."""
     item = await servive.update(pk, data)
     if item is None:
@@ -55,6 +55,6 @@ async def book_update(pk: int, data: BookUpdate, servive: BookService = Depends(
 
 
 @router.delete("/{pk}", status_code=204)
-async def book_delete(pk: int, servive: BookService = Depends(deps.get_service(BookService))):
+async def book_delete(pk: int, servive: BookServiceService = Depends(deps.get_service(BookServiceService))):
     """Удалить запись."""
     await servive.delete(pk)

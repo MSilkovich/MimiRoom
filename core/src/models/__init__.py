@@ -11,6 +11,7 @@ from .book import Book
 from .refresh_token import RefreshToken
 from .token_type import TokenType
 from .user_link import UserLink
+from .book_service import BookService
 
 __all__ = [
     "Base",
@@ -25,5 +26,6 @@ __all__ = [
     "Book",
     "RefreshToken",
     "TokenType",
-    "UserLink"
+    "UserLink",
+    "BookService"
 ]

@@ -110,3 +110,20 @@ class SqlAlchemyRepository(AbstractRepository, Generic[ModelType]):
             order_column).limit(limit).offset(offset)
         row = await self.session.execute(smth)
         return list(row.scalars().all())
+
+    async def get_many_by_ids(
+        self,
+        ids: set[int],
+        rule: PermissionRule | None = None,
+        include_deleted: bool = False,
+    ) -> list[ModelType]:
+        if not ids:
+            return []
+        pk = getattr(self.model, self.pk_name)
+        smth = select(self.model).where(pk.in_(ids))
+        if not include_deleted and hasattr(self.model, "is_deleted"):
+            smth = smth.where(self.model.is_deleted.is_(False))
+        if rule is not None and rule.scope == Scope.OWN:
+            smth = smth.where(rule.sql_filter(self.model.who_create))
+        row = await self.session.execute(smth)
+        return list(row.scalars().all())

@@ -11,6 +11,7 @@ if TYPE_CHECKING:
     from .book import Book
     from .breed import Breed
     from .service_consumable import ServiceConsumable
+    from .book_service import BookService
 
 
 class Service(Base):
@@ -35,8 +36,8 @@ class Service(Base):
         back_populates="service",
         lazy="selectin"
     )
-    books: Mapped[list["Book"]] = relationship(
-        "Book",
+    book_services: Mapped[list["BookService"]] = relationship(
+        "BookService",
         back_populates="service",
-        lazy="selectin"
+        lazy="selectin",
     )

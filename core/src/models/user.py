@@ -44,10 +44,16 @@ class User(Base):
         back_populates="owner",
         lazy="selectin"
     )
-    books: Mapped[list["Book"]] = relationship(
+
+    books_as_master: Mapped[list["Book"]] = relationship(
         "Book",
         back_populates="master",
-        lazy="selectin"
+        foreign_keys="Book.master_id",
+    )
+    books_as_client: Mapped[list["Book"]] = relationship(
+        "Book",
+        back_populates="client",
+        foreign_keys="Book.client_id",
     )
 
     refresh_tokens: Mapped[list["RefreshToken"]] = relationship(
