@@ -17,6 +17,7 @@ class ToolCall(BaseModel):
     id: str = Field(..., description="ID вызова, генерируется LLM")
     name: str
     arguments: dict[str, Any] = Field(default_factory=dict)
+    is_valid: bool = True
 
 
 class ToolResult(BaseModel):
@@ -30,6 +31,8 @@ class ToolResult(BaseModel):
 class LLMResponse(BaseModel):
     text: str | None = None
     tool_calls: list[ToolCall] = Field(default_factory=list)
+    finish_reason: str | None = None
+    usage: dict[str, Any] | None = None
     raw: dict[str, Any] | None = Field(
         default=None, description="Сырой ответ провайдера для отладки"
     )
