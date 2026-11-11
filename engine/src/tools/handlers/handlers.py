@@ -1,4 +1,4 @@
-"""Handlers инструментов: тонкие HTTP-клиенты к вашему REST API."""
+"""Handlers инструментов: тонкие HTTP-клиенты к REST API."""
 
 from src.logging import get_logger
 from typing import Any
@@ -14,7 +14,7 @@ async def _call_backend(
     method: str, path: str, *, json: dict | None = None
 ) -> dict[str, Any]:
     async with httpx.AsyncClient(
-        base_url=settings_backend.BACKEND_URL,
+        base_url=settings_backend.BACKEND_BASE_URL,
         timeout=settings_backend.BACKEND_TIMEOUT_SEC,
     ) as client:
         resp = await client.request(

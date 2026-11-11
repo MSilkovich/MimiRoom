@@ -5,11 +5,12 @@ import logging
 
 import redis.asyncio as redis
 
+from src.logging import get_logger
 from config.redis import settings_redis
 from .redis_connection import get_redis
 from .llm_service import process_message
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 async def _handle_one(msg_id: str, fields: dict) -> None:

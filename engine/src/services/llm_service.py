@@ -4,6 +4,7 @@ import json
 import logging
 from typing import Any
 
+from src.logging import get_logger
 from src.prompts.helper import load_prompt
 from src.schemas.llm import LLMResponse, Role, ToolResult
 from src.schemas.incoming import IncomingMessage
@@ -12,7 +13,7 @@ from src.exceptions import LLMError
 from src.memory.base import MemoryStore
 from src.tools.registry import get_handler, get_tool_schemas
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 MAX_ITERATIONS = 3  # защита от бесконечного цикла tool_calls
 
@@ -95,7 +96,7 @@ class LLMService:
     def _assistant_tool_call_message(self, response: LLMResponse) -> dict:
         return {
             "role": Role.ASSISTANT,
-            "content": response.text,
+            "content": response.text or "",
             "tool_calls": [
                 {
                     "id": c.id,
