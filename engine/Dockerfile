@@ -28,8 +28,8 @@ RUN pip install --no-index --find-links=/wheels -r requirements.txt
 
 COPY ./ ./
 
-ARG ENGINE_PORT
-ENV ENGINE_PORT=${ENGINE_PORT}
+ARG AI_ENGINE_PORT
+ENV AI_ENGINE_PORT=${AI_ENGINE_PORT}
 
 ENTRYPOINT ["sh", "-c"]
-CMD ["exec uvicorn src.apps.engine.main:app --host 0.0.0.0 --port ${ENGINE_PORT}"]
+CMD ["exec uvicorn src.apps.engine.main:app --host 0.0.0.0 --port ${AI_ENGINE_PORT}"]

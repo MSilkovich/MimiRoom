@@ -1,15 +1,15 @@
 """
-Путь: /
-- POST    /healthchek                          — проверить жив ли сервис и имеет ли все необходимые подключения
+Путь: /healthcheck
+- POST   /healthcheck                     — проверить жив ли сервис
 """
 
 from fastapi import APIRouter
 
 
-router = APIRouter(prefix="/", tags=["staff"])
+router = APIRouter(prefix="", tags=["staff"], include_in_schema=False)
 
 
-@router.post("/healthcheck", response_model=any)
+@router.post("/healthcheck")
 async def healthcheck():
-    """проверить жив ли сервис и имеет ли все необходимые подключения"""
-    return True  # TODO: единый стандарт
+    """Проверить жив ли сервис и имеет ли все необходимые подключения."""
+    return {"status": "ok"}  # TODO: полноценная проверка (Redis, LLM, backend)

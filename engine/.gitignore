@@ -39,3 +39,6 @@ doc-dev
 
 *.pytest_cache
 *.vscode
+
+.benchmarks
+.pytest_cache
