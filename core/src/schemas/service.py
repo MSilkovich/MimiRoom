@@ -18,11 +18,6 @@ class ServiceRead(Base):
     breed_id: int | None
     consumables: list[ServiceConsumableRead] = Field(default_factory=list)
 
-    created_at: datetime
-    updated_at: datetime
-    who_create: int | None
-    who_update: int | None
-
     @computed_field
     @property
     def duration_minutes(self) -> int | None:
@@ -44,10 +39,6 @@ class ServiceRead(Base):
                     {"consumable_id": 1, "volume": 2},
                     {"consumable_id": 2, "volume": 1},
                 ],
-                "created_at": "2026-10-26T10:00:00",
-                "updated_at": "2026-10-26T10:00:00",
-                "who_create": 1,
-                "who_update": 1,
             },
         },
     }

@@ -12,11 +12,6 @@ class ServiceConsumableRead(Base):
     volume: int | None
     consumable: StorageRead | None = None
 
-    created_at: datetime
-    updated_at: datetime
-    who_create: int | None
-    who_update: int | None
-
     model_config = Base.model_config | {
         "json_schema_extra": {
             "example": {
@@ -28,15 +23,7 @@ class ServiceConsumableRead(Base):
                     "title": "Шампунь",
                     "measure_unit_id": 1,
                     "count": 10,
-                    "created_at": "2026-10-26T10:00:00",
-                    "updated_at": "2026-10-26T10:00:00",
-                    "who_create": 1,
-                    "who_update": 1,
                 },
-                "created_at": "2026-10-26T10:00:00",
-                "updated_at": "2026-10-26T10:00:00",
-                "who_create": 1,
-                "who_update": 1,
             },
         },
     }

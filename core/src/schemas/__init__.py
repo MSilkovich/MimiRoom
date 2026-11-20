@@ -13,6 +13,7 @@ from .service_consumable import (
     ServiceConsumableUpdate,
 )
 from .book import BookRead, BookCreate, BookUpdate
+from .user_summary import Summary, UserSummary, PetSummary
 
 __all__ = [
     "Base",
@@ -45,5 +46,8 @@ __all__ = [
     "BookUpdate",
     "UserLinkCreate",
     "UserLinkRead",
-    "UserLinkUpdate"
+    "UserLinkUpdate",
+    "Summary",
+    "UserSummary",
+    "PetSummary",
 ]

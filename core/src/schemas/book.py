@@ -56,11 +56,6 @@ class BookRead(Base):
     cancelled_at: datetime | None
     cancelled_reason: str | None
 
-    created_at: datetime
-    updated_at: datetime
-    who_create: int | None
-    who_update: int | None
-
     model_config = Base.model_config | {
         "json_schema_extra": {
             "example": {
@@ -87,10 +82,6 @@ class BookRead(Base):
                 "completed_at": None,
                 "cancelled_at": None,
                 "cancelled_reason": None,
-                "created_at": "2026-10-26T10:00:00",
-                "updated_at": "2026-10-26T10:00:00",
-                "who_create": 1,
-                "who_update": 1,
             },
         },
     }

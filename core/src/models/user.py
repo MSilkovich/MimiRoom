@@ -26,6 +26,10 @@ class User(Base):
     name: Mapped[str] = mapped_column(String(25), nullable=False)
     surname: Mapped[str] = mapped_column(String(40), nullable=False)
     patronymic: Mapped[str | None] = mapped_column(String(40))
+    phone: Mapped[str | None] = mapped_column(
+        String(23), nullable=True, default=None, server_default=None)
+    email: Mapped[str | None] = mapped_column(
+        String(60), nullable=True, default=None, server_default=None)
     role: Mapped[Role] = mapped_column(
         SAEnum(Role, native_enum=False),
         nullable=False,

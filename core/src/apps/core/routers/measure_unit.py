@@ -15,13 +15,13 @@ from src.permissions.enums.permissions import Permission
 from src.permissions.enums.roles import Role
 from src.permissions.enums.scope import Scope
 from src.permissions.permission_rule import PermissionRule
-from src.middleware.auth import get_current_user, bearer_scheme
+from src.middleware.auth import get_current_user, auth_bearer_scheme
 from src.services import MeasureUnitService
 from src import dependencies as deps
 from src.schemas import MeasureUnitCreate, MeasureUnitUpdate, MeasureUnitRead
 
 router = APIRouter(prefix="/measure-units", tags=["measure-units"], dependencies=[
-    Security(bearer_scheme),
+    Security(auth_bearer_scheme),
     Depends(get_current_user),
 ])
 

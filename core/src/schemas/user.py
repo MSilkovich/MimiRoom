@@ -11,12 +11,9 @@ class UserRead(Base):
     name: str
     surname: str
     patronymic: str | None
+    phone: str | None
+    email: str | None
     role: str
-
-    created_at: datetime
-    updated_at: datetime
-    who_create: int | None
-    who_update: int | None
 
 
 class UserCreate(Base):
@@ -25,6 +22,8 @@ class UserCreate(Base):
     name: str
     surname: str
     patronymic: str | None = None
+    phone: str | None
+    email: str | None
 
 
 class UserUpdate(Base):
@@ -33,6 +32,8 @@ class UserUpdate(Base):
     name: str | None = None
     surname: str | None = None
     patronymic: str | None = None
+    phone: str | None
+    email: str | None
 
 
 class UserRoleUpdate(Base):

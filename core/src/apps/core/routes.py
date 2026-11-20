@@ -5,15 +5,16 @@ from config.project_config import settings_app
 def get_apps_router() -> APIRouter:
     """Вернуть объединённый роутер."""
 
-    from .routers.auth import router as auth_router
-    from .routers.measure_unit import router as measure_unit_router
-    from .routers.pet_type import router as pet_type_router
-    from .routers.breed import router as breed_router
-    from .routers.storage import router as storage_router
-    from .routers.service import router as service_router
-    from .routers.pet import router as pet_router
-    from .routers.book import router as book_router
-    from .routers.users import router as users_router
+    from .routers import auth_router
+    from .routers import measure_unit_router
+    from .routers import pet_type_router
+    from .routers import breed_router
+    from .routers import storage_router
+    from .routers import service_router, service_router_service
+    from .routers import pet_router
+    from .routers import book_router
+    from .routers import user_router, user_router_service
+    from .routers import staff_router
 
     router = APIRouter(prefix=f"/api/v{settings_app.VERSION}")
 
@@ -23,8 +24,11 @@ def get_apps_router() -> APIRouter:
     router.include_router(breed_router)
     router.include_router(storage_router)
     router.include_router(service_router)
+    router.include_router(service_router_service)
     router.include_router(pet_router)
     router.include_router(book_router)
-    router.include_router(users_router)
+    router.include_router(user_router)
+    router.include_router(user_router_service)
+    router.include_router(staff_router)
 
     return router
