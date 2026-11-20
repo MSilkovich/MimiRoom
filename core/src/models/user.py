@@ -1,8 +1,10 @@
 from typing import TYPE_CHECKING
 
-from sqlalchemy import BigInteger, ForeignKey, String
+from sqlalchemy import BigInteger, ForeignKey, String, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy import Enum as SAEnum
+
+from src.permissions.role_permissions import ROLE_MASK
 
 from .base_model import Base
 
@@ -24,6 +26,10 @@ class User(Base):
     name: Mapped[str] = mapped_column(String(25), nullable=False)
     surname: Mapped[str] = mapped_column(String(40), nullable=False)
     patronymic: Mapped[str | None] = mapped_column(String(40))
+    phone: Mapped[str | None] = mapped_column(
+        String(23), nullable=True, default=None, server_default=None)
+    email: Mapped[str | None] = mapped_column(
+        String(60), nullable=True, default=None, server_default=None)
     role: Mapped[Role] = mapped_column(
         SAEnum(Role, native_enum=False),
         nullable=False,
@@ -32,8 +38,9 @@ class User(Base):
     )
     permission_mask: Mapped[int] = mapped_column(
         BigInteger,
-        default=0,
         nullable=False,
+        default=ROLE_MASK[Role.CLIENT],
+        server_default=text(str(ROLE_MASK[Role.CLIENT]))
     )
 
     pets: Mapped[list["Pet"]] = relationship(
@@ -41,10 +48,16 @@ class User(Base):
         back_populates="owner",
         lazy="selectin"
     )
-    books: Mapped[list["Book"]] = relationship(
+
+    books_as_master: Mapped[list["Book"]] = relationship(
         "Book",
         back_populates="master",
-        lazy="selectin"
+        foreign_keys="Book.master_id",
+    )
+    books_as_client: Mapped[list["Book"]] = relationship(
+        "Book",
+        back_populates="client",
+        foreign_keys="Book.client_id",
     )
 
     refresh_tokens: Mapped[list["RefreshToken"]] = relationship(

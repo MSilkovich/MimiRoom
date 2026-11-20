@@ -5,27 +5,8 @@ services:
       context: ../core
       args:
         CORE_PORT: ${CORE_PORT}
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_HOST: ${POSTGRES_HOST}
-      POSTGRES_PORT: ${POSTGRES_PORT}
-      POSTGRES_DB: ${POSTGRES_DB}
-      
-      PROJECT_NAME: ${PROJECT_NAME}
-      VERSION: ${VERSION}
-
-      LOG_LEVEL: ${LOG_LEVEL}
-      LOG_CONSOLE: ${LOG_CONSOLE}
-      LOG_FILE: ${LOG_FILE}
-      LOG_FILE_PATH: ${LOG_FILE_PATH}
-      LOG_FILE_MAX_BYTES: ${LOG_FILE_MAX_BYTES}
-      LOG_FILE_BACKUP_COUNT: ${LOG_FILE_BACKUP_COUNT}
-
-      JWT_SECRET_KEY: ${JWT_SECRET_KEY}
-      JWT_ALGORITHM: ${JWT_ALGORITHM}
-      JWT_ACCESS_TOKEN_EXPIRE_MINUTES: ${JWT_ACCESS_TOKEN_EXPIRE_MINUTES}
-      JWT_REFRESH_TOKEN_EXPIRE_DAYS: ${JWT_REFRESH_TOKEN_EXPIRE_DAYS}
+    env_file:
+      - ../core/.env
     ports:
       - "${CORE_PORT}:${CORE_PORT}"
     restart: unless-stopped
@@ -34,7 +15,7 @@ services:
     volumes:
       - ./logs:/logs
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:${CORE_PORT}/config" ]
+      test: [ "CMD", "curl", "-f", "http://localhost:${CORE_PORT}/healthcheck" ]
       interval: 2s
       timeout: 10s
       retries: 5

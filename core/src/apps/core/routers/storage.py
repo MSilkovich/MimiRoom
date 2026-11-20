@@ -16,10 +16,10 @@ from src.excpetions.crud import NotFoundError
 from src.services import StorageService
 from src import dependencies as deps
 from src.schemas import StorageCreate, StorageRead, StorageUpdate
-from src.middleware.auth import get_current_user, bearer_scheme
+from src.middleware.auth import get_current_user, auth_bearer_scheme
 
 router = APIRouter(prefix="/storages", tags=["storage"], dependencies=[
-    Security(bearer_scheme),
+    Security(auth_bearer_scheme),
     Depends(get_current_user),
 ])
 

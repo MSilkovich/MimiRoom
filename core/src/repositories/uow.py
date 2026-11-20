@@ -12,7 +12,8 @@ from ..models import (
     ServiceConsumable,
     Book,
     RefreshToken,
-    UserLink
+    UserLink,
+    BookService
 )
 from .measure_unit_repository import MeasureUnitRepository
 from .pet_type_repository import PetTypeRepository
@@ -25,6 +26,7 @@ from .service_consumable_repository import ServiceConsumableRepository
 from .book_repository import BookRepository
 from .tokens_repository import RefreshTokenRepository
 from .user_link_repository import UserLinkRepository
+from .book_service_repository import BookServiceRepository
 
 
 class SqlAlchemyUnitOfWork(UnitOfWork):
@@ -53,6 +55,7 @@ class SqlAlchemyUnitOfWork(UnitOfWork):
         self.books = BookRepository(self.session)
         self.refresh_tokens = RefreshTokenRepository(self.session)
         self.user_links = UserLinkRepository(self.session)
+        self.book_service = BookServiceRepository(self.session)
 
         self._repositories = {
             MeasureUnit: self.measure_units,
@@ -65,7 +68,8 @@ class SqlAlchemyUnitOfWork(UnitOfWork):
             ServiceConsumable: self.service_consumables,
             Book: self.books,
             UserLink: self.user_links,
-            RefreshToken: self.refresh_tokens
+            RefreshToken: self.refresh_tokens,
+            BookService: self.book_service,
         }
         return self
 

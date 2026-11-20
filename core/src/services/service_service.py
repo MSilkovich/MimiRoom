@@ -1,7 +1,7 @@
 from src.models.service_consumable import ServiceConsumable
 from ..models.service import Service
 from ..schemas import ServiceCreate, ServiceUpdate
-from .base_service import BaseService
+from .base import BaseService
 
 
 class ServiceService(BaseService[Service, ServiceCreate, ServiceUpdate]):

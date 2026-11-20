@@ -1,0 +1,3 @@
+class LLMError(Exception):
+    """Базовая ошибка LLM-слоя."""
+    ...

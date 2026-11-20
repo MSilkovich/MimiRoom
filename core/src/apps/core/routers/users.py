@@ -13,14 +13,17 @@ from fastapi import APIRouter, Depends, Security
 
 from src import dependencies as deps
 from src.excpetions.crud import NotFoundError
+from src.middleware.mix_scheme import get_principal
+from src.middleware.principal import Principal
 from src.schemas.user import UserCreate, UserRead, UserUpdate
 from src.schemas.user_link import UserLinkCreate, UserLinkRead, UserLinkUpdate
+from src.schemas import Summary
 from src.services.user_service import UserService
 from src.services.user_link_service import UserLinkService
-from src.middleware.auth import get_current_user, bearer_scheme
+from src.middleware.auth import get_current_user, auth_bearer_scheme
 
 router = APIRouter(prefix="/users", tags=["users"], dependencies=[
-    Security(bearer_scheme),
+    Security(auth_bearer_scheme),
     Depends(get_current_user),
 ])
 
@@ -47,10 +50,9 @@ async def user_create(
     payload: UserCreate,
     service: UserService = Depends(deps.get_service(UserService))
 ):
-    """Создать пользователя.
-
-    Текущий ``current_user`` нужен, чтобы ``who_create``/``who_update`` были
-    заполнены из контекста. Пароль при выдаче не эскейпится в ``UserRead``.
+    """
+    Создать пользователя.
+    По умолчанию - CLIENT.
     """
     return await service.create(payload)
 
@@ -76,7 +78,6 @@ async def user_delete(pk: int, service: UserService = Depends(deps.get_service(U
 
 # region link
 
-
 @router.post("/link", response_model=UserLinkRead)
 async def link_messanger(
     payload: UserLinkCreate,
@@ -84,3 +85,22 @@ async def link_messanger(
 ):
     """Привязать соц. сеть пользователя."""
     return await service.create(payload)
+
+# endregion
+
+# region service
+
+# Роутер без пользовательских зависимостей: сюда пускаем и клиента
+# (access-токен), и сервис (service-токен) через ``get_principal``.
+router_service = APIRouter(prefix="/users", tags=["users"])
+
+
+@router_service.get("/{pk}/summary", response_model=Summary)
+async def user_summary(
+    pk: int, service: UserService = Depends(deps.get_service(UserService)),
+    principal: Principal = Depends(get_principal)
+):
+    """Сводка пользователя (доступна клиенту и сервису)."""
+    return await service.get_summary_by_id(pk)
+
+# endregion

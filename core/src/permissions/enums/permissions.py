@@ -6,15 +6,17 @@ class Permission(IntEnum):
     NOTE: это НЕ значение бита, а НОМЕР СЛОТА (0, 1, 2, ...).
     Реальный сдвиг в маске = index * 2 (2 bit на слот)
     Правило: номера только растут. Удалённый — «надгробие» (_RESERVED_...), не переиспользуем. Это гарантирует стабильность уже сохранённых масок в БД.
+
+    WRITE считать за CREATE+UPDATE
     """
 
     USER_READ = 0
     USER_WRITE = 1
     USER_DELETE = 2
 
-    BREED_READ = 3
-    BREED_WRITE = 4
-    BREED_DELETE = 5
+    DICTIONARIES_READ = 3
+    DICTIONARIES_WRITE = 4
+    DICTIONARIES_DELETE = 5
 
     SERVICE_READ = 6
     SERVICE_WRITE = 7

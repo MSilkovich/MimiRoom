@@ -1,6 +1,6 @@
 from ..models.user_link import UserLink
 from ..schemas import UserLinkCreate, UserLinkRead, UserLinkUpdate
-from .base_service import BaseService
+from .base import BaseService
 
 
 class UserLinkService(BaseService[UserLink, UserLinkCreate, UserLinkUpdate]):

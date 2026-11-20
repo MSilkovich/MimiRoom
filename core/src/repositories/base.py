@@ -1,6 +1,8 @@
 from abc import ABC, abstractmethod
 from typing import Optional
 
+from src.permissions.permission_rule import PermissionRule
+
 
 class AbstractRepository(ABC):
 
@@ -11,22 +13,21 @@ class AbstractRepository(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    async def create(self, data: dict):
+    async def create(self, data: dict, rule: PermissionRule | None = None):
         raise NotImplementedError
 
     @abstractmethod
-    async def update(self, data: dict, **filters):
+    async def update(self, data: dict, rule: PermissionRule | None = None, **filters):
         raise NotImplementedError
 
     @abstractmethod
-    async def delete(self, **filters) -> None:
+    async def delete(self, rule: PermissionRule | None = None, **filters) -> None:
         raise NotImplementedError
 
     @abstractmethod
-    async def get_single(self, **filters) -> Optional[object] | None:
+    async def get_single(self, rule: PermissionRule | None = None, **filters) -> Optional[object] | None:
         raise NotImplementedError
 
     @abstractmethod
-    async def get_multi(self, order: str | None = None, limit: int = 100, offset: int = 0):
+    async def get_multi(self, order: str | None = None, limit: int = 100, offset: int = 0, rule: PermissionRule | None = None, **filters) -> list[object]:
         raise NotImplementedError
-

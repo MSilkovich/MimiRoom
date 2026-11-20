@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from sqlalchemy import true, Column
 
 from .enums.permissions import Permission
 from .enums.scope import Scope
@@ -21,7 +22,7 @@ class PermissionRule:
             return True
         return user_id is not None and user_id == self.owner_id
 
-    def sql_filter(self, column):
+    def sql_filter(self, column: Column):
         if self.is_unrestricted:
-            return None
+            return true()
         return column == self.owner_id

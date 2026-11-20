@@ -1,0 +1,24 @@
+services:
+  ai-engine:
+    container_name: ai-engine-service
+    build:
+      context: ../engine
+      args:
+        AI_ENGINE_PORT: ${AI_ENGINE_PORT}
+    env_file:
+      - ../engine/.env
+    ports:
+      - "${AI_ENGINE_PORT}:${AI_ENGINE_PORT}"
+    restart: unless-stopped
+    networks:
+      - network-bridge
+    volumes:
+      - ./logs:/logs
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:${AI_ENGINE_PORT}/healthcheck" ]
+      interval: 2s
+      timeout: 10s
+      retries: 5

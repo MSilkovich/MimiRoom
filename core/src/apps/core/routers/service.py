@@ -11,13 +11,15 @@
 from fastapi import APIRouter, Depends, Security
 
 from src.excpetions.crud import NotFoundError
+from src.middleware.mix_scheme import get_principal
+from src.middleware.principal import Principal
 from src.services import ServiceService
 from src import dependencies as deps
 from src.schemas import ServiceCreate, ServiceRead, ServiceUpdate
-from src.middleware.auth import get_current_user, bearer_scheme
+from src.middleware.auth import get_current_user, auth_bearer_scheme
 
 router = APIRouter(prefix="/services", tags=["services"], dependencies=[
-    Security(bearer_scheme),
+    Security(auth_bearer_scheme),
     Depends(get_current_user),
 ])
 
@@ -60,3 +62,19 @@ async def service_update(
 async def service_delete(pk: int, servive: ServiceService = Depends(deps.get_service(ServiceService))):
     """Удалить услугу."""
     await servive.delete(pk)
+
+# region service
+
+# WARNING: костыль
+router_service = APIRouter(prefix="/s/services")
+
+
+@router_service.get("", response_model=list[ServiceRead], include_in_schema=False)
+async def service_list_service(
+    limit: int = 100, offset: int = 0, servive: ServiceService = Depends(deps.get_service(ServiceService)),
+    principal: Principal = Depends(get_principal)
+):
+    """Вернуть список услуг."""
+    return await servive.get_multi(limit=limit, offset=offset)
+
+# endregion
