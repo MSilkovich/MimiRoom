@@ -6,7 +6,7 @@ from config.llm import settings_llm
 
 def create_llm_client() -> LLMClient:
     provider = settings_llm.LLM_PROVIDER.lower()
-    if provider == "openai":
-        from src.llm.openai_client import OpenaiClient
-        return OpenaiClient()
+    if provider == "ollama":
+        from src.llm.qwen_client import QwenClient
+        return QwenClient()
     raise ValueError(f"Unknown LLM provider: {provider}")

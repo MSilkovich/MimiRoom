@@ -7,7 +7,8 @@ from typing import Any
 from openai import AsyncOpenAI, APIStatusError, APITimeoutError, RateLimitError
 
 from config.llm import settings_llm
-from src.llm.base import LLMClient, LLMError
+from src.llm.base import LLMClient
+from src.exceptions import LLMError
 from src.schemas.llm import LLMResponse, ToolCall
 
 logger = get_logger(__name__)
