@@ -21,14 +21,24 @@ services:
   #     file: docker-compose.tg.yaml
   #     service: tg
 
-  # ai-engine:
-  #   extends:
-  #     file: docker-compose.ai.yaml
-  #     service: ai-engine
+  ai-engine:
+    extends:
+      file: docker-compose.ai.yaml
+      service: ai-engine
+
+  redisinsight:
+    image: redis/redisinsight:latest
+    container_name: redisinsight
+    ports:
+      - "5540:5540"
+    volumes:
+      - redisinsight-data:/data
+    restart: unless-stopped
 
 volumes:
   postgres-data:
   redis-data:
+  redisinsight-data:
 
 networks:
   network-bridge:

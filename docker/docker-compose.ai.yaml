@@ -5,20 +5,8 @@ services:
       context: ../engine
       args:
         AI_ENGINE_PORT: ${AI_ENGINE_PORT}
-    environment:
-      AI_ENGINE_PORT: ${AI_ENGINE_PORT}
-      REDIS_HOST: ${REDIS_HOST}
-      REDIS_PORT: 6379
-      REDIS_PASSWORD: ${REDIS_PASSWORD}
-      REDIS_DB: ${REDIS_DB}
-
-      PROJECT_NAME: ${PROJECT_NAME}
-      VERSION: ${VERSION}
-
-      LOG_LEVEL: ${LOG_LEVEL}
-      LOG_CONSOLE: ${LOG_CONSOLE}
-      LOG_FILE: ${LOG_FILE}
-      LOG_FILE_PATH: ${LOG_FILE_PATH}
+    env_file:
+      - ../engine/.env
     ports:
       - "${AI_ENGINE_PORT}:${AI_ENGINE_PORT}"
     restart: unless-stopped
