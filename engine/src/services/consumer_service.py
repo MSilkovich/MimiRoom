@@ -1,4 +1,4 @@
-"""Consumer-сервис: читает задачи из Redis Stream и передаёт в handler."""
+"""Consumer-сервис: читает задачи из Redis Stream, передаёт в LLM, публикует ответ."""
 
 import asyncio
 import logging
@@ -8,15 +8,22 @@ import redis.asyncio as redis
 from src.logging import get_logger
 from config.redis import settings_redis
 from .redis_connection import get_redis
-from .llm_service import process_message
+from .llm_service import LLMService
+from .output_service import publish_response
 
 logger = get_logger(__name__)
 
 
 async def _handle_one(msg_id: str, fields: dict) -> None:
-    """Обработать одно сообщение. Не делает ACK — это ответственность вызывающего."""
+    """
+    Обработать одно сообщение: LLM → публикация ответа.
+    Не делает ACK — это ответственность вызывающего.
+    """
     try:
-        await process_message(fields)
+        response = await LLMService.process_message(fields)
+        await publish_response(response)
+        logger.info(
+            "Message %s processed, response published", msg_id)
     except Exception:
         logger.exception("Failed to process message %s", msg_id)
         raise

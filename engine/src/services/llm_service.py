@@ -1,17 +1,22 @@
-"""Оркестратор: LLM + tools + memory. Вызывается из handlers.process_message."""
+"""Оркестратор: LLM + tools + memory. Вызывается из consumer_service."""
 
 import json
 import logging
 from typing import Any
 
 from src.logging import get_logger
-from src.prompts.helper import load_prompt
+from src.prompts.helper import load_prompt, render_summary, EMPTY_SUMMARY
 from src.schemas.llm import LLMResponse, Role, ToolResult
 from src.schemas.incoming import IncomingMessage
+from src.schemas.outgoing import OutgoingMessage
 from src.llm.base import LLMClient
+from src.llm.factory import create_llm_client
 from src.exceptions import LLMError
 from src.memory.base import MemoryStore
+from src.memory.redis_memory import RedisMemoryStore
 from src.tools.registry import get_handler, get_tool_schemas
+from src.repositories import backend_repository
+from config.llm import settings_llm
 
 logger = get_logger(__name__)
 
@@ -22,8 +27,51 @@ class LLMService:
     def __init__(self, client: LLMClient, memory: MemoryStore) -> None:
         self._client = client
         self._memory = memory
-        self._system_prompt = load_prompt("system.txt")
+        self._system_prompt = load_prompt("system.md")
         self._tools = get_tool_schemas()
+
+    # region static
+
+    @staticmethod
+    def _build_llm_service() -> "LLMService":
+        """Создать LLMService с клиентом из конфига и Redis-памятью."""
+        client = create_llm_client()
+        memory: MemoryStore = RedisMemoryStore()
+        return LLMService(client, memory)
+
+    @staticmethod
+    async def process_message(fields: dict) -> OutgoingMessage:
+        """Обработать одно сообщение из Redis Stream.
+
+        Парсит поля → IncomingMessage, прогоняет через LLM,
+        возвращает OutgoingMessage для публикации в response-стрим.
+        """
+        service = LLMService._build_llm_service()
+        message = IncomingMessage(**fields)
+        logger.info(
+            "Processing message user_id=%s provider=%s message_id=%s",
+            message.user_id, message.provider, message.message_id,
+        )
+
+        if not message.summary:
+            message.summary = await backend_repository.get_user_summary(user_id=message.user_id)
+        
+        if message.summary:
+            logger.debug("Message enrichments: %s", message.summary)
+
+        text = await service.process(message)
+
+        return OutgoingMessage(
+            user_id=message.user_id,
+            provider=message.provider,
+            channel=message.channel,
+            external_id=message.external_id,
+            text=text,
+            original_message_id=message.message_id,
+            metadata=message.metadata,
+        )
+
+    # endregion
 
     async def process(self, task: IncomingMessage) -> str:
         """Обработать одно входящее сообщение и вернуть текст ответа."""
@@ -31,11 +79,12 @@ class LLMService:
 
         messages: list[dict] = [
             {"role": Role.SYSTEM, "content": self._system_prompt},
+            {"role": Role.SYSTEM, "content": render_summary(task.summary) if task.summary else EMPTY_SUMMARY},
             *history,
             {"role": Role.USER, "content": task.text},
         ]
 
-        # сохраняем входящее сообщение (когда будет реальная память)
+        # сохраняем входящее сообщение 
         await self._memory.append(
             task.user_id, task.channel, {
                 "role": Role.USER, "content": task.text}
