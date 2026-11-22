@@ -1,0 +1,6 @@
+aiogram==3.25.0
+aiohttp==3.13.5
+pydantic-settings==2.12.0
+python-dotenv==1.2.4
+redis==8.1.0
+uvloop==0.22.1; sys_platform == 'linux' or sys_platform == 'darwin'

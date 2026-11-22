@@ -20,7 +20,10 @@ class CheckUserMiddleware(BaseMiddleware):
         event: TelegramObject,
         data: dict[str, Any],
     ) -> Any:
-        user: User = data["event_from_user"]
+        user: User = data.get("event_from_user")
+
+        if user is None:
+            return await handler(event, data)
 
         if TYPE_CHECKING:
             assert isinstance(event, Update)

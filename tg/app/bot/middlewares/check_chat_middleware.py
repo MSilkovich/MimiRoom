@@ -22,7 +22,10 @@ class CheckChatMiddleware(BaseMiddleware):
         event: TelegramObject,
         data: dict[str, Any],
     ) -> Any:
-        chat: Chat = data["event_chat"]
+        chat: Chat = data.get("event_chat")
+
+        if chat is None:
+            return await handler(event, data)
 
         if TYPE_CHECKING:
             assert isinstance(event, Update)

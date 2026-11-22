@@ -1,9 +1,16 @@
 services:
-  tg-bot:
+  tg:
+    container_name: tg-bot
     build:
       context: ../tg
       dockerfile: Dockerfile
-    container_name: tg-bot
-    restart: unless-stopped
     env_file:
-      - .env
+      - ../tg/.env
+    restart: unless-stopped
+    networks:
+      - network-bridge
+    volumes:
+      - ./logs:/logs
+    depends_on:
+      redis:
+        condition: service_healthy

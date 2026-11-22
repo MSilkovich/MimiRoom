@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-import logging
 from typing import cast
 
 from aiogram import Bot, Dispatcher
@@ -20,60 +19,101 @@ from aiohttp.typedefs import Middleware
 
 import errors
 import handlers
+from config.project_config import settings_app
+from config.telegram_config import settings_telegram
 from middlewares.check_chat_middleware import CheckChatMiddleware
 from middlewares.check_user_middleware import CheckUserMiddleware
-from settings import Settings
+from services import close_redis, run_response_consumer
+from utils.logging import get_logger, setup_logging
 
-logging.basicConfig(level=logging.INFO)
+logger = get_logger(__name__)
 
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
+# Фоновые задачи процесса (consumer ответов engine).
+_background_tasks: list[asyncio.Task] = []
 
 
-async def startup(dispatcher: Dispatcher, bot: Bot, settings: Settings) -> None:
+async def _response_consumer_safe(bot: Bot) -> None:
+    """Держим consumer живым: при падении перезапускаем через паузу."""
+    while True:
+        try:
+            await run_response_consumer(bot)
+        except asyncio.CancelledError:
+            raise
+        except Exception:  # noqa: BLE001
+            logger.exception("Response consumer crashed, restarting in 5s")
+            await asyncio.sleep(5)
+
+
+async def startup(bot: Bot, **_kwargs) -> None:
     await bot.delete_webhook(drop_pending_updates=True)
 
-    if not settings.dev:
+    if not settings_telegram.DEV:
         await bot.set_webhook(
-            url=settings.webhook_url.get_secret_value(),
-            allowed_updates=dispatcher.resolve_used_update_types(),
-            secret_token=settings.webhook_secret_token.get_secret_value(),
+            url=settings_telegram.WEBHOOK_URL.get_secret_value(),
+            secret_token=settings_telegram.WEBHOOK_SECRET_TOKEN.get_secret_value(),
         )
 
-    dispatcher.update.outer_middleware(CheckChatMiddleware())
-    dispatcher.update.outer_middleware(CheckUserMiddleware())
+    # Слушаем ответы engine из Redis и доставляем в Telegram.
+    task = asyncio.create_task(
+        _response_consumer_safe(bot), name="tg-response-consumer"
+    )
+    _background_tasks.append(task)
 
-    logger.info("Bot started")
+    logger.info(
+        "Bot started: %s v%s (dev=%s, webhooks=%s)",
+        settings_app.PROJECT_NAME,
+        settings_app.VERSION,
+        settings_telegram.DEV,
+        settings_telegram.WEBHOOKS,
+    )
 
 
-async def shutdown(dispatcher: Dispatcher) -> None:  # noqa: ARG001
+async def shutdown(**_kwargs) -> None:
+    for task in _background_tasks:
+        task.cancel()
+    for task in _background_tasks:
+        try:
+            await task
+        except asyncio.CancelledError:
+            pass
+    _background_tasks.clear()
+
+    await close_redis()
     logger.info("Bot stopped")
 
 
-async def main() -> None:
-    settings = Settings()
+def _build_bot() -> Bot:
+    token = settings_telegram.BOT_TOKEN.get_secret_value()
+    if not token or token == "CHANGE_ME":
+        raise SystemExit(
+            "BOT_TOKEN не задан. Укажите его в tg/.env (см. tg/.env.example)."
+        )
 
-    # TelegramLocalBotAPIServer
-    # api = TelegramAPIServer.from_base("http://telegram-bot-api:8081")
-    # api = TelegramAPIServer.from_base("http://localhost:8081")
-    api = TEST if settings.test_server is True else PRODUCTION
-
-    bot = Bot(
-        token=settings.bot_token.get_secret_value(),
+    api = TEST if settings_telegram.TEST_SERVER is True else PRODUCTION
+    return Bot(
+        token=token,
         session=AiohttpSession(api=api),
         default=DefaultBotProperties(parse_mode="HTML"),
     )
 
+
+async def main() -> None:
+    setup_logging()
+    logger.info("Starting %s v%s", settings_app.PROJECT_NAME, settings_app.VERSION)
+
+    bot = _build_bot()
+
     dp = Dispatcher(
         events_isolation=SimpleEventIsolation(),
-        settings=settings,
-        developer_id=settings.developer_id,
+        developer_id=settings_telegram.DEVELOPER_ID,
     )
+    dp.update.outer_middleware(CheckChatMiddleware())
+    dp.update.outer_middleware(CheckUserMiddleware())
     dp.include_routers(handlers.router, errors.router)
     dp.startup.register(startup)
     dp.shutdown.register(shutdown)
 
-    if settings.webhooks:
+    if settings_telegram.WEBHOOKS:
         app = web.Application(
             middlewares=[
                 cast(Middleware, ip_filter_middleware(IPFilter(DEFAULT_TELEGRAM_NETWORKS))),
@@ -83,18 +123,14 @@ async def main() -> None:
         SimpleRequestHandler(
             dispatcher=dp,
             bot=bot,
-            secret_token=settings.webhook_secret_token.get_secret_value(),
+            secret_token=settings_telegram.WEBHOOK_SECRET_TOKEN.get_secret_value(),
         ).register(app, "/webhook")
         setup_application(app, dp, bot=bot)
 
         await web._run_app(app, host="0.0.0.0", port=8080)  # noqa: S104, SLF001
-
     else:
         await dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types())
 
 
 if __name__ == "__main__":
-    # Aiogram automatically sets the event loop policy to uvloop if available.
-    # I really don't like it, because it should be set by the developer.
-    # Developer decides which event loop to use.
     asyncio.run(main())

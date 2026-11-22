@@ -30,4 +30,6 @@ COPY --chown=app:app . .
 
 USER app
 
-CMD ["python", "-m", "bot"]
+# main.py использует «плоские» импорты (errors, handlers, config, services),
+# поэтому запускаем файл напрямую: sys.path[0] = /app/app/bot.
+CMD ["python", "app/bot/main.py"]
