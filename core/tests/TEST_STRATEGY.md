@@ -1,7 +1,6 @@
-# Тестовая стратегия: ресурсы → услуги → слоты → бронирования
+# Тестовая стратегия: мастера → услуги → слоты → бронирования
 
-Цель — гарантировать корректность цепочки **resource → service → work_schedule → slot → booking**
-и невозможность двойного бронирования. Документ краткий: приоритеты, уровни и ключевые сценарии.
+Цель — гарантировать корректность цепочки **master (user, role=groomer) → service → master_services → work_schedule → slot → booking** и невозможность двойного бронирования. Документ краткий: приоритеты, уровни и ключевые сценарии.
 
 ## 1. Уровни
 
@@ -22,9 +21,9 @@
 
 | # | Сценарий | Ожидание |
 |---|---|---|
-| 1 | master + service + datetime → availability → booking | слот `booked`, бронь создана |
-| 2 | мастер не оказывает услугу (`resource_services`) | 422 |
-| 3 | неактивный мастер/услуга | 422 |
+| 1 | master (role=groomer) + service (`master_services`) + datetime → availability → booking | слот `booked`, бронь создана |
+| 2 | мастер не оказывает услугу (нет связи в `master_services`) | 422 |
+| 3 | пользователь не является мастером (`role != groomer`) / услуга не найдена | 422 / 404 |
 | 4 | генерация: weekday, `is_day_off`, границы `start/end` | корректное число слотов |
 | 5 | повторная генерация того же периода | 0 новых дублей |
 | 6 | `buffer_after` перекрывает соседний слот | соседний `blocked` |
@@ -40,8 +39,9 @@
 Внешний источник (фронт или интеграция) собирает **мастер + услуга + дата-время**, затем:
 `GET /slots/availability` → выбор `slot_id` → `POST /bookings`.
 
-Сервер обязан провалидировать: мастер оказывает услугу, мастер/услуга активны, слот соответствует
-паре resource+service и времени, нет пересечений, запись атомарна (advisory-lock + unique).
+Сервер обязан провалидировать: мастер оказывает услугу (запись в `master_services`), пользователь имеет роль
+`groomer`, слот соответствует паре `master`+`service` и времени, нет пересечений, запись атомарна
+(advisory-lock по мастеру + unique).
 
 Открытые вопросы, которые нужно закрыть тестами перед интеграцией:
 - **несколько услуг** в одном визите (N слотов/броней, атомарность или booking-group);
@@ -51,7 +51,9 @@
 ## 5. Фикстуры и инструменты
 
 - Postgres, отдельная схема на сессию тестов (см. `tests/conftest.py`), `create_all`.
-- Хелперы: `make_service(duration, buffers)`, `make_resource(service_ids)`, `make_schedule(weekday)`, `make_slots(date)`.
+- Сейчас в `tests/conftest.py` есть только фикстура `measure_unit_service`; хелперы ниже нужно добавить.
+- Хелперы: `make_master(service_ids)` (создаёт `user` с `role=groomer` и связи `master_services`),
+  `make_service(duration, buffers)`, `make_schedule(master_id, weekday)`, `make_slots(master_id, service_id, date)`.
 - Фиксированная TZ (Europe/Moscow) и «свободные» будущие даты.
 - Concurrency: две независимые `AsyncSession`, `asyncio.gather`, проверка `ConflictError`/`IntegrityError` и count активных броней.
 
