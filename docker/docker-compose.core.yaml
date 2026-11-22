@@ -7,6 +7,10 @@ services:
         CORE_PORT: ${CORE_PORT}
     env_file:
       - ../core/.env
+    environment:
+      # В compose Postgres/Redis — локальные сервисы, а не внешний хост.
+      POSTGRES_HOST: postgres
+      REDIS_HOST: redis
     ports:
       - "${CORE_PORT}:${CORE_PORT}"
     restart: unless-stopped
@@ -14,8 +18,14 @@ services:
       - network-bridge
     volumes:
       - ./logs:/logs
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://localhost:${CORE_PORT}/healthcheck" ]
-      interval: 2s
+      interval: 5s
       timeout: 10s
       retries: 5
+      start_period: 10s

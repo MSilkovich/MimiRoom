@@ -39,8 +39,11 @@ def _parse_response(fields: dict[str, str]) -> tuple[str, int] | None:
         logger.warning("Skip malformed response: %s", fields)
         return None
 
+    # Для анонимных гостей engine получает channel вида "<chat_id>:<external_id>",
+    # чтобы не смешивать историю в группах. Отправляем в настоящий chat_id.
+    chat_part = channel.split(":", 1)[0]
     try:
-        chat_id = int(channel)
+        chat_id = int(chat_part)
     except (TypeError, ValueError):
         logger.warning("Skip response with bad channel=%r", channel)
         return None

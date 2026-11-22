@@ -16,6 +16,10 @@ ENV PYTHONDONTWRITEBYTECODE=1
 # вывод сразу результатов без буферизации вывода
 ENV PYTHONUNBUFFERED=1
 
+# curl нужен compose-healthcheck'у (GET /healthcheck)
+RUN apt-get update && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/*
+
 # директория проекта
 WORKDIR /app
 

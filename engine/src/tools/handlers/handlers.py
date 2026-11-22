@@ -40,25 +40,27 @@ async def create_booking(
     pet_id: int | None = None,
     master_id: int | None = None,
     comment: str | None = None,
+    options: dict[str, Any] | None = None,
     **_: Any,
 ) -> dict[str, Any]:
     """Создать запись на услугу.
 
     Args:
-        user_id: ID пользователя (передаётся из LLMService).
+        user_id: ID пользователя (передаётся из LLMService). 0 — анонимный гость.
         date: Дата в формате YYYY-MM-DD.
         time: Время в формате HH:MM:SS.
         services: Список услуг [{"service_id": int, "master_id": int | None}, ...].
         pet_id: ID питомца (если известен).
         master_id: ID мастера (если применимо ко всем услугам).
         comment: Комментарий к записи.
+        options: Доп. информация, которой нет в полях (имя, телефон, пожелания...).
 
     Returns:
         BookRead — созданная запись.
     """
     logger.info(
-        "Tool create_booking called: date=%s time=%s services=%s",
-        date, time, services,
+        "Tool create_booking called: date=%s time=%s services=%s user_id=%s",
+        date, time, services, user_id,
     )
 
     body: dict[str, Any] = {
@@ -68,12 +70,19 @@ async def create_booking(
         "services": services,
     }
 
+    # Для привязанного пользователя сохраняем владельца записи.
+    # user_id=0 — анонимный гость TG-бота, client_id в core должен остаться NULL.
+    if user_id and user_id > 0:
+        body["client_id"] = user_id
+
     if pet_id is not None:
         body["pet_id"] = pet_id
     if master_id is not None:
         body["master_id"] = master_id
     if comment is not None:
         body["comment"] = comment
+    if options:
+        body["options"] = options
 
     result = await backend_repository.create_booking(body)
     logger.info("Booking created: book_id=%s", result.get("book_id"))

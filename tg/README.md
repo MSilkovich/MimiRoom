@@ -11,10 +11,11 @@ Telegram <-> tg-bot <--[bot:tasks]--> engine <--[LLM]--> engine <--[bot:response
 ## Что умеет
 
 - `/start` — приветствие и статус привязки.
-- `/start <PAYLOAD>` (deep-link `https://t.me/<bot>?start=PAYLOAD`) — привязка
-  Telegram к аккаунту из личного кабинета (core `POST /api/v0.0.1/users/link`).
-- Любое текстовое сообщение:
-  1. резолвит внутренний `user_id` по Telegram-id (с кэшем в Redis, TTL 30 мин);
+- `/start <code>` (deep-link `https://t.me/<bot>?start=<code>`) — привязка
+  Telegram к аккаунту из ЛК через одноразовый короткий код.
+- Любое текстовое сообщение (в т.ч. от **непривязанного** пользователя):
+  1. резолвит внутренний `user_id` по Telegram-id (кэш в Redis, TTL 30 мин);
+     если не привязан — работает как гость (`user_id=0`);
   2. публикует задачу в `bot:tasks`;
   3. фоновый consumer читает `bot:responses` и отправляет ответ пользователю.
 
@@ -109,77 +110,65 @@ venv/Scripts/python app/bot/main.py
 берёт `channel` и `text` и отправляет в Telegram. `original_message_id`
 используется только для логов.
 
-## Привязка Telegram (deep-link)
+## Привязка Telegram (deep-link, одноразовый код)
 
-1. ЛК (frontend/core) формирует ссылку `https://t.me/<bot>?start=<PAYLOAD>`.
-2. Пользователь открывает бота, приходит `/start <PAYLOAD>`.
-3. Бот разбирает payload (`utils/deep_link.py`), вызывает core
-   `POST /api/v0.0.1/users/link` и кладёт связку в Redis-кэш.
+1. Пользователь в ЛК нажимает «Привязать Telegram».
+2. Фронт вызывает core `POST /api/v0.0.1/users/link/code` (access-токен).
+   Core генерирует короткий одноразовый код и кладёт его в Redis
+   (`tg:link_code:<code>` → `user_id|provider`) с TTL `LINK_CODE_TTL_SEC`
+   (по умолчанию 300 с). Ответ: `{code, expires_in, deep_link?}`;
+   `deep_link` собирается, если в core задан `TG_BOT_USERNAME`.
+3. Пользователь открывает `https://t.me/<bot>?start=<code>`.
+4. Бот отправляет код в core `POST /api/v0.0.1/users/link/code/consume`
+   (сервисный токен) вместе со своим `external_id`. Core атомарно забирает
+   код из Redis, создаёт `UserLink` и возвращает связку.
+5. Бот кэширует `external_id -> user_id` на 30 минут.
 
-Поддерживаемые форматы payload (Telegram разрешает только `A-Za-z0-9_-`,
-до 64 символов, поэтому «сырой» `user_id=1&token=...` не пройдёт):
+Поддерживаемые форматы payload в боте:
+- `<code>` — одноразовый код (основной вариант, ≤64 символов);
+- `user_id:access_token` (legacy — привязка access-токеном напрямую);
+- base64url(JSON/query) — для совместимости.
 
-- base64url от JSON `{"user_id": 1, "token": "<link-token>"}`;
-- base64url от query `user_id=1&token=<link-token>`;
-- компактно `1:<token>` (или `1_<token>`, `1-<token>`);
-- просто `<code>` (одноразовый код) — тогда `user_id` должен определить core.
+> Код в БД не хранится: это временный секрет в Redis, одноразовый и с TTL.
 
-### Требования к core (НЕ реализовано в core, нужно добавить)
+## API core по привязкам
 
-1. **`GET /api/v0.0.1/users/link?provider=telegram&external_id=<id>`** — ручки
-   нет. Бот дергает её на каждое сообщение (результат кэшируется на 30 мин).
+- `GET /api/v0.0.1/users/link?provider=&external_id=` — **access или service**.
+  Access получает только свою связку, service — любую.
+- `GET /api/v0.0.1/users/link/all` — список связок текущего пользователя (access).
+- `POST /api/v0.0.1/users/link` — создать/перепривязать (access; `user_id` из токена).
+- `PUT /api/v0.0.1/users/link/{link_id}` — обновить свою (access).
+- `DELETE /api/v0.0.1/users/link/{link_id}` — удалить свою (access).
+- `POST /api/v0.0.1/users/link/code` — выпустить одноразовый код (access).
+- `POST /api/v0.0.1/users/link/code/consume` — обменять код на связку (service).
 
-   Ожидаемый ответ `200 OK`:
-   ```json
-   {
-     "user_id": 42,
-     "provider": "telegram",
-     "external_id": "123456789",
-     "options": {},
-     "user": {                       // опционально, для приветствия
-       "user_id": 42,
-       "name": "Иван",
-       "surname": "Иванов",
-       "phone": "+7...",
-       "email": "user@example.com"
-     }
-   }
-   ```
-   - `user_id` — **обязательное** поле (бот кладёт его в `IncomingMessage.user_id`);
-   - если связки нет — `404` (бот поймёт «не привязан» и не закэширует надолго);
-   - авторизация — **сервисный** токен (как у engine);
-   - ⚠️ в core уже есть `GET /users/{pk}`; чтобы `link` не перехватился как
-     `pk="link"`, новый роут надо объявить **до** `GET /users/{pk}` или
-     использовать отдельный путь (например, `/users/link/by-external`).
+`UserLinkRead` содержит `id` и `user_id`.
 
-2. **`POST /api/v0.0.1/users/link`** — существует, но:
-   - защищён только пользовательским access-токеном
-     (`Security(auth_bearer_scheme)` + `get_current_user`), а TG-бот — сервис.
-     Нужен либо доступ по сервисному токену, либо передача пользовательского
-     `link-token` из deep-link (бот уже умеет передавать его как Bearer).
-   - тело требует `user_id` (`UserLinkCreate`), но не проверяет, что `user_id`
-     совпадает с субъектом токена. Для безопасности `user_id` лучше брать из
-     подписанного токена/одноразового кода, а не из тела.
-   - `UserLinkRead` не содержит `user_id` — для единообразия стоит добавить.
+## Анонимный пользователь (без привязки)
 
-3. **Одноразовый link-code** (рекомендуется): из-за лимита 64 символа ссылка
-   не может нести длинный JWT. Лучше, чтобы ЛК/`core` выдавали короткий
-   одноразовый код, а `POST /users/link` принимал `code` и сам находил
-   пользователя (срок жизни 1–5 мин, одноразовый).
+Бот не блокирует непривязанных:
+- `user_id` для engine = `0` (гость);
+- `channel` = `<chat_id>:<external_id>`, чтобы в группах не смешивать историю
+  разных гостей (для привязанных — просто `<chat_id>`);
+- `core GET /users/0/summary` отдаёт гостевую сводку, чтобы engine не падал;
+- запись создаётся с `client_id=null`, а дополнительная информация может
+  храниться в `Book.options` (JSONB).
 
-## Нестыковки в других сервисах (не менял)
+## Нестыковки в других сервисах
 
-- `POST`/`GET /users/link` — см. раздел выше.
+- **[исправлено]** `engine create_booking` теперь передаёт `client_id` для
+  привязанного пользователя (`user_id > 0`) и `options` для доп. данных гостя;
+  в схеме tool появилось поле `options`.
+- **[исправлено]** в `EMPTY_SUMMARY` исправлена опечатка `optinons` → `options`.
 - `engine/.env`: `DIALOG_TTL_SEC=900` (15 мин), хотя TTL диалога задуман
   30 мин. Кэш связки в боте — 1800 с. Менять `engine/.env` не стал.
-- `core`/`engine` healthcheck: в compose используется `curl -f GET /healthcheck`,
-  а ручки объявлены как `POST`. `GET` вернёт 405 → контейнер будет `unhealthy`.
-  Бот зависит только от `redis`, но это стоит поправить в compose/ручках.
-- `tg` в `docker-compose.yaml` был закомментирован, а `docker-compose.tg.yaml`
-  объявлял сервис `tg-bot` вместо `tg` — исправлено в рамках tg.
+- **[исправлено]** healthcheck `core`/`engine`: теперь `GET /healthcheck` отдаёт
+  реальный снимок фонового монитора (БД/Redis/core/LLM), без открытия
+  соединений на каждый HTTP-запрос.
+- `engine/.env`: `DIALOG_TTL_SEC=900` (15 мин), хотя TTL диалога задуман
+  30 мин. Кэш связки в боте — 1800 с. Менять `engine/.env` не стал.
 - `engine` читает `summary` из `GET /api/v0.0.1/users/{id}/summary` без проверки
-  HTTP-статуса: при 404 парсинг `Summary(**json)` упадёт. На стороне engine
-  стоит обработать.
+  HTTP-статуса — **исправлено**: 404 → `None`, 4xx/5xx/сеть → `BackendError`.
 
 ## Безопасность
 

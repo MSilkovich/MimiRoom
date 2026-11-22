@@ -6,6 +6,8 @@ services:
       dockerfile: Dockerfile
     env_file:
       - ../tg/.env
+    environment:
+      REDIS_HOST: redis
     restart: unless-stopped
     networks:
       - network-bridge
@@ -13,4 +15,6 @@ services:
       - ./logs:/logs
     depends_on:
       redis:
+        condition: service_healthy
+      core:
         condition: service_healthy

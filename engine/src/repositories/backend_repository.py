@@ -8,9 +8,13 @@
 
 from typing import Any
 
+from src.exceptions import BackendNotFoundError
+from src.logging import get_logger
 from src.schemas import Summary
 
 from .base import BaseRepository
+
+logger = get_logger(__name__)
 
 
 class BackendRepository(BaseRepository):
@@ -60,8 +64,15 @@ class BackendRepository(BaseRepository):
         Returns:
             Summary или None, если пользователь не найден.
         """
-        json = await self._request(
-            "GET",
-            f"/api/v0.0.1/users/{user_id}/summary"
-        )
-        return Summary(**json)
+        try:
+            payload = await self._request(
+                "GET",
+                f"/api/v0.0.1/users/{user_id}/summary",
+            )
+        except BackendNotFoundError:
+            logger.info("User summary not found: user_id=%s", user_id)
+            return None
+
+        if not payload:
+            return None
+        return Summary.model_validate(payload)

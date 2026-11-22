@@ -7,6 +7,8 @@ services:
         AI_ENGINE_PORT: ${AI_ENGINE_PORT}
     env_file:
       - ../engine/.env
+    environment:
+      REDIS_HOST: redis
     ports:
       - "${AI_ENGINE_PORT}:${AI_ENGINE_PORT}"
     restart: unless-stopped
@@ -17,8 +19,11 @@ services:
     depends_on:
       redis:
         condition: service_healthy
+      core:
+        condition: service_healthy
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://localhost:${AI_ENGINE_PORT}/healthcheck" ]
-      interval: 2s
+      interval: 5s
       timeout: 10s
       retries: 5
+      start_period: 15s

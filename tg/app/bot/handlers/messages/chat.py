@@ -23,11 +23,6 @@ _ALLOWED_CHAT_TYPES = {
     ChatType.SUPERGROUP,
 }
 
-_NOT_LINKED_TEXT = (
-    "🔗 Чтобы я мог помочь, привяжите Telegram к аккаунту в личном кабинете:\n"
-    "ЛК → «Привязать Telegram» → перейдите по ссылке."
-)
-
 
 @router.message(F.text, ~F.text.startswith("/"))
 async def on_text_message(msg: Message) -> None:
@@ -43,15 +38,19 @@ async def on_text_message(msg: Message) -> None:
     external_id = str(msg.from_user.id)
     user_id = await resolve_user_id(external_id)
 
+    # Анонимный гость (не привязан к ЛК): работаем с user_id=0.
+    # Канал делаем уникальным (chat_id:external_id), чтобы в группах
+    # история разных гостей не смешивалась в engine (dialog:{user_id}:{channel}).
+    channel = str(msg.chat.id)
     if user_id is None:
-        await msg.answer(_NOT_LINKED_TEXT)
-        return
+        user_id = 0
+        channel = f"{msg.chat.id}:{external_id}"
 
     try:
         await publish_incoming(
             user_id=user_id,
             external_id=external_id,
-            channel=str(msg.chat.id),
+            channel=channel,
             text=text,
             message_id=str(msg.message_id),
         )

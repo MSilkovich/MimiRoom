@@ -5,7 +5,13 @@ from .breed import BreedRead, BreedCreate, BreedUpdate
 from .service import ServiceRead, ServiceCreate, ServiceUpdate
 from .storage import StorageRead, StorageCreate, StorageUpdate
 from .user import UserRead, UserCreate, UserUpdate
-from .user_link import UserLinkUpdate, UserLinkRead, UserLinkCreate
+from .user_link import (
+    UserLinkUpdate,
+    UserLinkRead,
+    UserLinkCreate,
+    LinkCodeResponse,
+    LinkCodeConsumeRequest,
+)
 from .pet import PetRead, PetCreate, PetUpdate
 from .service_consumable import (
     ServiceConsumableRead,
@@ -47,6 +53,8 @@ __all__ = [
     "UserLinkCreate",
     "UserLinkRead",
     "UserLinkUpdate",
+    "LinkCodeResponse",
+    "LinkCodeConsumeRequest",
     "Summary",
     "UserSummary",
     "PetSummary",

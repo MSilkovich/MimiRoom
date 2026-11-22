@@ -5,6 +5,7 @@ from fastapi import FastAPI
 from src.logging import setup_logging, get_logger
 from config.project_config import settings_app
 from src.services import ensure_consumer_group, run_consumer, close_redis
+from src.services.health_service import start_health_monitor, stop_health_monitor
 
 
 @asynccontextmanager
@@ -35,16 +36,20 @@ async def lifespan(app: FastAPI):
                               |___/                         
                 """)
 
+    consumer_task: asyncio.Task | None = None
     try:
         await ensure_consumer_group()
         consumer_task = asyncio.create_task(run_consumer())
+        await start_health_monitor()
 
         yield
     finally:
         # shutdown
-        consumer_task.cancel()
-        try:
-            await consumer_task
-        except asyncio.CancelledError:
-            pass
+        await stop_health_monitor()
+        if consumer_task is not None:
+            consumer_task.cancel()
+            try:
+                await consumer_task
+            except asyncio.CancelledError:
+                pass
         await close_redis()

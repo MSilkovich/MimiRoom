@@ -20,6 +20,13 @@ class BookServiceService(BaseService[Book, BookCreate, BookUpdate]):
 
             payload = data.model_dump(exclude={"services"})
             payload["status"] = BookStatus.PENDING
+            # Анонимная запись (TG-бот без привязки): engine передаёт user_id=0,
+            # но в БД это не пользователь — храним как NULL, а всю доп. инфу
+            # клиент кладёт в options.
+            if payload.get("client_id") is not None and payload["client_id"] <= 0:
+                payload["client_id"] = None
+            if payload.get("master_id") is not None and payload["master_id"] <= 0:
+                payload["master_id"] = None
 
             book = await book_repo.create(payload)
 
@@ -50,4 +57,7 @@ class BookServiceService(BaseService[Book, BookCreate, BookUpdate]):
                 await book_service_repo.create_many(items)
 
             await uow.commit()
-            return book
+            # Перечитываем, чтобы подтянуть services/pet/master/client
+            # (иначе после закрытия сессии сериализация BookRead упадёт).
+            reloaded = await book_repo.get_single(book_id=book.book_id)
+            return reloaded or book

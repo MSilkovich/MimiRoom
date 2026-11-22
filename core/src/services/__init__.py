@@ -9,6 +9,7 @@ from .user_service import UserService
 from .pet_service import PetService
 from .service_consumable_service import ServiceConsumableService
 from .book_service import BookServiceService
+from .user_link_service import UserLinkService
 
 __all__ = [
     "GenericService",
@@ -22,4 +23,5 @@ __all__ = [
     "PetService",
     "ServiceConsumableService",
     "BookServiceService",
+    "UserLinkService",
 ]

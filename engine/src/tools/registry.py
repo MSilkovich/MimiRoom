@@ -129,6 +129,15 @@ TOOLS: dict[str, dict[str, Any]] = {
                                 "например 'Первый визит', 'Нужна стрижка'"
                             ),
                         },
+                        "options": {
+                            "type": "object",
+                            "description": (
+                                "Дополнительные данные клиента, которых нет в других полях: "
+                                "имя, телефон, пожелания, кличка нового питомца и т.п. "
+                                "Передавай в формате {\"ключ\": \"значение\"}."
+                            ),
+                            "additionalProperties": True,
+                        },
                     },
                     "required": ["date", "time", "services"],
                     "additionalProperties": False,

@@ -152,3 +152,25 @@ class CoreClient:
             )
         except CoreNotFound:
             return None
+
+    async def consume_link_code(
+        self,
+        *,
+        code: str,
+        external_id: str,
+        options: dict[str, Any] | None = None,
+    ) -> dict[str, Any] | None:
+        """POST /users/link/code/consume — обменять одноразовый код на связку.
+
+        Сервер (core) сам проверяет код в Redis и создаёт UserLink.
+        """
+        return await self._request(
+            "POST",
+            f"{settings_core.CORE_LINK_PATH}/code/consume",
+            json_body={
+                "code": code,
+                "provider": self._provider,
+                "external_id": external_id,
+                "options": options or {},
+            },
+        )

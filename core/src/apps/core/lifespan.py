@@ -3,6 +3,8 @@ from fastapi import FastAPI
 
 from src.apps.core.logging import setup_logging, get_logger
 from config.project_config import settings_app
+from src.services.link_code_service import close_redis as close_link_code_redis
+from src.services.health_service import start_health_monitor, stop_health_monitor
 
 
 @asynccontextmanager
@@ -32,6 +34,11 @@ async def lifespan(app: FastAPI):
                 |_|  |_|_|_|  |_|_|_| \_\___/ \___/|_| |_| |_|
                 """)
 
-    yield
+    await start_health_monitor()
 
-    # shutdown
+    try:
+        yield
+    finally:
+        # shutdown
+        await stop_health_monitor()
+        await close_link_code_redis()

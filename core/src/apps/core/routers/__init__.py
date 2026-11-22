@@ -11,4 +11,5 @@ from .service import router as service_router, router_service as service_router_
 from .storage import router as storage_router
 from .staff import router as staff_router
 from .users import router as user_router, router_service as user_router_service
+from .user_link import router as user_link_router
 from .auth import router as auth_router

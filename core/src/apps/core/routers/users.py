@@ -16,10 +16,8 @@ from src.excpetions.crud import NotFoundError
 from src.middleware.mix_scheme import get_principal
 from src.middleware.principal import Principal
 from src.schemas.user import UserCreate, UserRead, UserUpdate
-from src.schemas.user_link import UserLinkCreate, UserLinkRead, UserLinkUpdate
-from src.schemas import Summary
+from src.schemas import Summary, UserSummary
 from src.services.user_service import UserService
-from src.services.user_link_service import UserLinkService
 from src.middleware.auth import get_current_user, auth_bearer_scheme
 
 router = APIRouter(prefix="/users", tags=["users"], dependencies=[
@@ -76,18 +74,6 @@ async def user_delete(pk: int, service: UserService = Depends(deps.get_service(U
     await service.delete(pk)
 
 
-# region link
-
-@router.post("/link", response_model=UserLinkRead)
-async def link_messanger(
-    payload: UserLinkCreate,
-    service: UserLinkService = Depends(deps.get_service(UserLinkService))
-):
-    """Привязать соц. сеть пользователя."""
-    return await service.create(payload)
-
-# endregion
-
 # region service
 
 # Роутер без пользовательских зависимостей: сюда пускаем и клиента
@@ -100,7 +86,21 @@ async def user_summary(
     pk: int, service: UserService = Depends(deps.get_service(UserService)),
     principal: Principal = Depends(get_principal)
 ):
-    """Сводка пользователя (доступна клиенту и сервису)."""
-    return await service.get_summary_by_id(pk)
+    """Сводка пользователя (доступна клиенту и сервису).
+
+    Для ``pk == 0`` возвращаем «гостевую» сводку: engine использует
+    user_id=0 для неавторизованных пользователей TG-бота и не должен
+    падать на отсутствующем пользователе.
+    """
+    summary = await service.get_summary_by_id(pk)
+    if summary is None:
+        if pk == 0:
+            return Summary(
+                user=UserSummary(id=0, name="Гость", phone=None),
+                pets=[],
+                notes=None,
+            )
+        raise NotFoundError("Пользователь не найден")
+    return summary
 
 # endregion

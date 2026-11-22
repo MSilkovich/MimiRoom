@@ -49,9 +49,10 @@ async def _send_welcome(msg: Message) -> None:
     if user_id is None:
         text = (
             "👋 Здравствуйте!\n\n"
-            "Чтобы я мог помочь с записью и вопросами, привяжите Telegram "
-            "к аккаунту в личном кабинете.\n\n"
-            "Откройте ЛК → «Привязать Telegram» и перейдите по ссылке оттуда."
+            "Можно пользоваться и без привязки — я помогу выбрать услугу "
+            "и записаться.\n\n"
+            "Если привяжете Telegram в личном кабинете (ЛК → «Привязать Telegram»), "
+            "я буду помнить ваши данные и питомцев."
         )
     else:
         text = (
@@ -75,37 +76,42 @@ async def _handle_link(msg: Message, payload: LinkPayload) -> None:
     external_id = str(msg.from_user.id)
 
     if not payload.token:
-        logger.warning("Deep-link without token: %s", payload.raw)
+        logger.warning("Deep-link without token/code: %s", payload.raw)
         await msg.answer(
             "⚠️ Не удалось прочитать ссылку привязки.\n"
             "Откройте личный кабинет и нажмите «Привязать Telegram» ещё раз."
         )
         return
 
-    if payload.user_id is None:
-        # Вариант «одноразовый код»: user_id должна определить core по коду.
-        logger.warning(
-            "Deep-link without user_id (opaque code): %s. "
-            "Core должен уметь разрезолвить код.", payload.raw
-        )
-        await msg.answer(
-            "⚠️ Ссылка устарела или неполная. "
-            "Сформируйте новую ссылку в личном кабинете."
-        )
-        return
-
     try:
-        await _client.create_link(
-            user_id=payload.user_id,
-            external_id=external_id,
-            service_token=payload.token,
-        )
+        if payload.user_id is not None:
+            # Совместимость: старый формат user_id:access_token.
+            await _client.create_link(
+                user_id=payload.user_id,
+                external_id=external_id,
+                service_token=payload.token,
+            )
+            linked_user_id = payload.user_id
+        else:
+            # Основной формат: одноразовый короткий код из ЛК.
+            link = await _client.consume_link_code(
+                code=payload.token,
+                external_id=external_id,
+            )
+            if not link or link.get("user_id") is None:
+                raise CoreError("Empty response from link code consume")
+            linked_user_id = int(link["user_id"])
     except CoreError as exc:
-        logger.exception("Link failed for user_id=%s", payload.user_id)
+        logger.warning("Link failed for external_id=%s: %s", external_id, exc)
         if exc.status == 409:
             await msg.answer(
-                "ℹ️ Этот Telegram уже привязан к аккаунту. "
+                "ℹ️ Этот Telegram уже привязан к другому аккаунту. "
                 "Если это ошибка — обратитесь в поддержку."
+            )
+        elif exc.status in (400, 404, 422):
+            await msg.answer(
+                "⚠️ Ссылка привязки недействительна или истекла.\n"
+                "Сформируйте новую ссылку в личном кабинете."
             )
         else:
             await msg.answer(
@@ -114,12 +120,12 @@ async def _handle_link(msg: Message, payload: LinkPayload) -> None:
             )
         return
 
-    await remember_link(payload.user_id, external_id)
+    await remember_link(linked_user_id, external_id)
     logger.info(
-        "Telegram linked: external_id=%s -> user_id=%s", external_id, payload.user_id
+        "Telegram linked: external_id=%s -> user_id=%s", external_id, linked_user_id
     )
     await msg.answer(
-        f"✅ Готово! Telegram привязан к аккаунту #{payload.user_id}.\n"
+        f"✅ Готово! Telegram привязан к аккаунту #{linked_user_id}.\n"
         "Теперь напишите вопрос — я на связи."
     )
 
