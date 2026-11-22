@@ -190,8 +190,10 @@ Adapter ──[bot:tasks]──> Engine ──[LLM]──> Engine ──[bot:res
 - `schema` — JSON Schema для OpenAI function calling.
 - `handler` — асинхронная функция, реализованная в `handlers/`.
 - **Текущие инструменты**:
-  1. `get_services` — GET `/api/v0.0.1/services` — список услуг с ценами (limit, offset).
-  2. `create_booking` — POST `/api/v0.0.1/book` — создание записи (date, time, services, опционально pet_id, master_id, comment).
+  1. `get_services` — GET `/api/v0.0.1/s/services` — каталог услуг (цена, длительность, мастера).
+  2. `get_availability` — GET `/api/v0.0.1/slots/availability` — свободные слоты по услуге и дате (`service_id`, `date_from`, опц. `date_to`, `resource_id`).
+  3. `create_booking` — POST `/api/v0.0.1/bookings` — создание брони по `slot_id` + `client_name`, `client_phone`, опц. `comment`.
+- **Цепочка записи**: `get_services` → `get_availability` → выбор `slot_id` → `create_booking`. `slot_id` берётся только из ответа `get_availability`.
 - **Цепочка вызова**: LLM → registry.get_handler() → handlers.xxx() → repositories.BookingRepository → BaseRepository._request() → HTTP → Backend API.
 - Handlers не делают HTTP-запросы напрямую. За HTTP отвечают репозитории.
 - `get_tool_schemas()` — возвращает список схем для передачи в LLM API.
@@ -200,10 +202,10 @@ Adapter ──[bot:tasks]──> Engine ──[LLM]──> Engine ──[bot:res
 
 ### Repositories (Репозитории)
 
-- `BaseRepository` — базовый класс с методом `_request(method, path, json, params)`, который ходит в backend API с `X-Service-Token`.
-- Конкретные репозитории (например, `BookingRepository`) наследуют `BaseRepository` и добавляют предметные методы.
+- `BaseRepository` — базовый класс с методом `_request(method, path, json, params)`, который ходит в backend API с `Authorization: Bearer <service-token>`.
+- `BackendRepository` (`backend_repository.py`) — предметные методы: `get_services`, `get_service`, `get_availability`, `create_booking`, `get_user_summary`.
 - Репозитории — единственное место, где делаются HTTP-запросы к backend.
-- `booking_repository` — singleton, создаётся на уровне модуля и переиспользуется всеми handlers.
+- `backend_repository` — singleton, создаётся на уровне модуля и переиспользуется всеми handlers.
 
 ### Consumer (Redis Stream)
 

@@ -23,7 +23,7 @@ TOOLS: dict[str, dict[str, Any]] = {
             "function": {
                 "name": "get_services",
                 "description": (
-                    "Получить список услуг с ценами. "
+                    "Получить список услуг с ценами, длительностью и мастерами. "
                     "Вызывай когда пользователь спрашивает 'что есть', "
                     "'какие услуги', 'сколько стоит', "
                     "или в начале диалога, чтобы предложить варианты."
@@ -35,9 +35,9 @@ TOOLS: dict[str, dict[str, Any]] = {
                             "type": "integer",
                             "description": (
                                 "Сколько услуг вернуть (максимум). "
-                                "По умолчанию 10 — обычно хватает."
+                                "По умолчанию 50 — обычно каталога хватает."
                             ),
-                            "default": 10,
+                            "default": 50,
                         },
                         "offset": {
                             "type": "integer",
@@ -51,95 +51,90 @@ TOOLS: dict[str, dict[str, Any]] = {
         },
         "handler": handlers.get_services,
     },
+    "get_availability": {
+        "schema": {
+            "type": "function",
+            "function": {
+                "name": "get_availability",
+                "description": (
+                    "Получить реальные свободные слоты мастера по услуге на дату/период. "
+                    "Вызывай после get_services, когда известны услуга и дата. "
+                    "НЕ выдумывай время и slot_id — бери только из ответа этого инструмента. "
+                    "Если свободного времени нет, предложи ближайшие варианты из ответа."
+                ),
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "service_id": {
+                            "type": "integer",
+                            "description": "ID услуги из get_services",
+                        },
+                        "date_from": {
+                            "type": "string",
+                            "description": (
+                                "Дата начала в формате YYYY-MM-DD, например 2026-11-24"
+                            ),
+                        },
+                        "date_to": {
+                            "type": "string",
+                            "description": (
+                                "Дата окончания (включительно) в формате YYYY-MM-DD. "
+                                "Не указывай, если нужен один день."
+                            ),
+                        },
+                        "resource_id": {
+                            "type": "integer",
+                            "description": (
+                                "ID мастера, если пользователь явно выбрал мастера. "
+                                "Иначе не передавай — будут предложены все мастера услуги."
+                            ),
+                        },
+                    },
+                    "required": ["service_id", "date_from"],
+                    "additionalProperties": False,
+                },
+            },
+        },
+        "handler": handlers.get_availability,
+    },
     "create_booking": {
         "schema": {
             "type": "function",
             "function": {
                 "name": "create_booking",
                 "description": (
-                    "Создать запись на услугу. "
-                    "Вызывай ТОЛЬКО после того, как собраны и подтверждены "
-                    "пользователем: дата, время и список услуг. "
-                    "Перед вызовом перечисли пользователю всё и спроси "
-                    "'Подтверждаете запись?'."
+                    "Создать бронь на конкретный слот. "
+                    "Вызывай ТОЛЬКО после того, как пользователь подтвердил "
+                    "услугу, время и мастера, и только с slot_id из get_availability. "
+                    "Для нескольких услуг вызывай инструмент несколько раз — по одному слоту на услугу."
                 ),
                 "parameters": {
                     "type": "object",
                     "properties": {
-                        "date": {
-                            "type": "string",
-                            "description": (
-                                "Дата записи в формате YYYY-MM-DD, "
-                                "например 2026-11-15"
-                            ),
-                        },
-                        "time": {
-                            "type": "string",
-                            "description": (
-                                "Время записи в формате HH:MM:SS, "
-                                "например 14:30:00"
-                            ),
-                        },
-                        "services": {
-                            "type": "array",
-                            "description": (
-                                "Список услуг, на которые записывается клиент. "
-                                "Каждый элемент содержит service_id "
-                                "(из get_services)" # + " и опционально master_id."
-                            ),
-                            "items": {
-                                "type": "object",
-                                "properties": {
-                                    "service_id": {
-                                        "type": "integer",
-                                        "description": "ID услуги из get_services",
-                                    },
-                                    # "master_id": {
-                                    #     "type": "integer",
-                                    #     "description": (
-                                    #         "ID мастера для этой услуги "
-                                    #         "(если пользователь назвал мастера)"
-                                    #     ),
-                                    # },
-                                },
-                                "required": ["service_id"],
-                                "additionalProperties": False,
-                            },
-                            "minItems": 1,
-                        },
-                        "pet_id": {
+                        "slot_id": {
                             "type": "integer",
                             "description": (
-                                "ID питомца (если пользователь его назвал "
-                                "и он есть в системе)"
+                                "ID слота из ответа get_availability. "
+                                "Не придумывай значение."
                             ),
                         },
-                        # "master_id": {
-                        #     "type": "integer",
-                        #     "description": (
-                        #         "ID мастера, если он общий для всех услуг "
-                        #         "(передавай только если пользователь "
-                        #         "явно назвал мастера)"
-                        #     ),
-                        # },
+                        "client_name": {
+                            "type": "string",
+                            "description": "Имя клиента для записи",
+                        },
+                        "client_phone": {
+                            "type": "string",
+                            "description": "Телефон клиента для связи",
+                        },
                         "comment": {
                             "type": "string",
                             "description": (
-                                "Комментарий к записи, что-то что пользователь хотел передать менеджеру, "
-                                "например 'Первый визит', 'Нужна стрижка'"
+                                "Комментарий к записи: кличка питомца, пожелания, "
+                                "«первый визит» и т.п."
                             ),
-                        },
-                        "options": {
-                            "type": "object",
-                            "description": (
-                                "Дополнительные данные клиента, которых нет в других полях: "
-                                "имя, телефон, пожелания, кличка нового питомца и т.п. "
-                                "Передавай в формате {\"ключ\": \"значение\"}."
-                            ),
-                            "additionalProperties": True,
                         },
                     },
-                    "required": ["date", "time", "services"],
+                    "required": ["slot_id", "client_name", "client_phone"],
                     "additionalProperties": False,
                 },
             },

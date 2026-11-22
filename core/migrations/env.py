@@ -9,10 +9,6 @@ from alembic import context
 
 from src.models.base_model import Base
 
-# Импортируем пакет моделей, чтобы все таблицы попали в Base.metadata
-# (нужно для autogenerate). Порядок не важен: отношения разрешаются по строкам.
-import src.models  # noqa: F401,E402
-
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config

@@ -2,7 +2,9 @@
 
 import json
 import logging
+from datetime import datetime, timedelta, timezone
 from typing import Any
+from zoneinfo import ZoneInfo
 
 from src.logging import get_logger
 from src.prompts.helper import load_prompt, render_summary, EMPTY_SUMMARY
@@ -20,7 +22,32 @@ from config.llm import settings_llm
 
 logger = get_logger(__name__)
 
-MAX_ITERATIONS = 3  # защита от бесконечного цикла tool_calls
+MAX_ITERATIONS = 6  # защита от бесконечного цикла tool_calls
+# Новая цепочка записи требует минимум 3 шага LLM:
+# get_services -> get_availability -> create_booking (+ уточнения), поэтому
+# лимит поднят с 3 до 6.
+
+try:
+    # На Linux/Docker системная база часовых поясов есть всегда.
+    BOOKING_TZ = ZoneInfo("Europe/Moscow")
+except Exception:  # noqa: BLE001 — Windows без пакета tzdata
+    # Москва с 2014 года живёт в фиксированном UTC+3 (без перехода на DST).
+    BOOKING_TZ = timezone(timedelta(hours=3), name="Europe/Moscow")
+
+_WEEKDAYS_RU = (
+    "понедельник", "вторник", "среда", "четверг",
+    "пятница", "суббота", "воскресенье",
+)
+
+
+def _now_context() -> str:
+    """Текущие дата/время для промпта — LLM не знает «сегодня» сам."""
+    now = datetime.now(BOOKING_TZ)
+    return (
+        f"ТЕКУЩИЕ ДАТА И ВРЕМЯ: {now:%Y-%m-%d %H:%M} "
+        f"({_WEEKDAYS_RU[now.weekday()]}), часовой пояс Europe/Moscow. "
+        "Относительные даты («завтра», «в пятницу») считай от этого момента."
+    )
 
 
 class LLMService:
@@ -80,6 +107,7 @@ class LLMService:
         messages: list[dict] = [
             {"role": Role.SYSTEM, "content": self._system_prompt},
             {"role": Role.SYSTEM, "content": render_summary(task.summary) if task.summary else EMPTY_SUMMARY},
+            {"role": Role.SYSTEM, "content": _now_context()},
             *history,
             {"role": Role.USER, "content": task.text},
         ]
