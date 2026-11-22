@@ -13,7 +13,11 @@ from ..models import (
     Book,
     RefreshToken,
     UserLink,
-    BookService
+    BookService,
+    Resource,
+    WorkSchedule,
+    Slot,
+    Booking,
 )
 from .measure_unit_repository import MeasureUnitRepository
 from .pet_type_repository import PetTypeRepository
@@ -27,6 +31,10 @@ from .book_repository import BookRepository
 from .tokens_repository import RefreshTokenRepository
 from .user_link_repository import UserLinkRepository
 from .book_service_repository import BookServiceRepository
+from .resource_repository import ResourceRepository
+from .work_schedule_repository import WorkScheduleRepository
+from .slot_repository import SlotRepository
+from .booking_repository import BookingRepository
 
 
 class SqlAlchemyUnitOfWork(UnitOfWork):
@@ -56,6 +64,10 @@ class SqlAlchemyUnitOfWork(UnitOfWork):
         self.refresh_tokens = RefreshTokenRepository(self.session)
         self.user_links = UserLinkRepository(self.session)
         self.book_service = BookServiceRepository(self.session)
+        self.resources = ResourceRepository(self.session)
+        self.work_schedules = WorkScheduleRepository(self.session)
+        self.slots = SlotRepository(self.session)
+        self.bookings = BookingRepository(self.session)
 
         self._repositories = {
             MeasureUnit: self.measure_units,
@@ -70,6 +82,10 @@ class SqlAlchemyUnitOfWork(UnitOfWork):
             UserLink: self.user_links,
             RefreshToken: self.refresh_tokens,
             BookService: self.book_service,
+            Resource: self.resources,
+            WorkSchedule: self.work_schedules,
+            Slot: self.slots,
+            Booking: self.bookings,
         }
         return self
 

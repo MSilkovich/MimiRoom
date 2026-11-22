@@ -4,6 +4,7 @@ from decimal import Decimal
 from pydantic import Field, computed_field
 
 from .base_schema import Base
+from .resource import ResourceBriefRead
 from .service_consumable import (
     ServiceConsumableCreateWithService,
     ServiceConsumableRead,
@@ -15,7 +16,11 @@ class ServiceRead(Base):
     title: str
     duration: timedelta | None
     price: Decimal
+    buffer_before_minutes: int
+    buffer_after_minutes: int
+    is_active: bool
     breed_id: int | None
+    resources: list[ResourceBriefRead] = Field(default_factory=list)
     consumables: list[ServiceConsumableRead] = Field(default_factory=list)
 
     @computed_field
@@ -34,7 +39,11 @@ class ServiceRead(Base):
                 "duration": "PT1H30M",
                 "duration_minutes": 90,
                 "price": "1500.00",
+                "buffer_before_minutes": 10,
+                "buffer_after_minutes": 10,
+                "is_active": True,
                 "breed_id": 1,
+                "resources": [],
                 "consumables": [
                     {"consumable_id": 1, "volume": 2},
                     {"consumable_id": 2, "volume": 1},
@@ -52,7 +61,15 @@ class ServiceCreate(Base):
         examples=["PT1H30M", "PT45M", "P1D"],
     )
     price: Decimal = Field(..., examples=["1500.00"])
+    buffer_before_minutes: int = Field(default=0, ge=0, examples=[10])
+    buffer_after_minutes: int = Field(default=0, ge=0, examples=[10])
+    is_active: bool = Field(default=True, examples=[True])
     breed_id: int | None = Field(default=None, examples=[1])
+    resource_ids: list[int] = Field(
+        default_factory=list,
+        description="Мастера, которые оказывают услугу",
+        examples=[[1, 2]],
+    )
     consumables: list[ServiceConsumableCreateWithService] = Field(
         default_factory=list,
         description="Список материалов, списываемых при оказании услуги",
@@ -73,4 +90,10 @@ class ServiceUpdate(Base):
         examples=["PT1H30M", "PT45M", "P1D"],
     )
     price: Decimal | None = Field(default=None, examples=["1500.00"])
+    buffer_before_minutes: int | None = Field(default=None, ge=0, examples=[10])
+    buffer_after_minutes: int | None = Field(default=None, ge=0, examples=[10])
+    is_active: bool | None = Field(default=None, examples=[True])
     breed_id: int | None = Field(default=None, examples=[1])
+    resource_ids: list[int] | None = Field(
+        default=None, description="Если передано — набор мастеров будет заменён"
+    )

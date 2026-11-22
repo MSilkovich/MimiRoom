@@ -16,6 +16,10 @@ def get_apps_router() -> APIRouter:
     from .routers import user_router, user_router_service
     from .routers import user_link_router
     from .routers import staff_router
+    from .routers import resource_router
+    from .routers import work_schedule_router
+    from .routers import slot_router
+    from .routers import booking_router
 
     router = APIRouter(prefix=f"/api/v{settings_app.VERSION}")
 
@@ -28,6 +32,10 @@ def get_apps_router() -> APIRouter:
     router.include_router(service_router_service)
     router.include_router(pet_router)
     router.include_router(book_router)
+    router.include_router(resource_router)
+    router.include_router(work_schedule_router)
+    router.include_router(slot_router)
+    router.include_router(booking_router)
     # ВАЖНО: user_link_router раньше user_router, иначе GET /users/link
     # перехватится как GET /users/{pk}.
     router.include_router(user_link_router)

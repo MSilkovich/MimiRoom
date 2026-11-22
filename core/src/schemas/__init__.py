@@ -19,6 +19,20 @@ from .service_consumable import (
     ServiceConsumableUpdate,
 )
 from .book import BookRead, BookCreate, BookUpdate
+from .resource import (
+    ResourceRead,
+    ResourceCreate,
+    ResourceUpdate,
+    ResourceBriefRead,
+    ServiceBriefRead,
+)
+from .work_schedule import (
+    WorkScheduleRead,
+    WorkScheduleCreate,
+    WorkScheduleUpdate,
+)
+from .slot import SlotRead, SlotGenerateRequest, SlotGenerateResponse
+from .booking import BookingRead, BookingCreate, BookingUpdate
 from .user_summary import Summary, UserSummary, PetSummary
 
 __all__ = [
@@ -50,6 +64,20 @@ __all__ = [
     "BookRead",
     "BookCreate",
     "BookUpdate",
+    "ResourceRead",
+    "ResourceCreate",
+    "ResourceUpdate",
+    "ResourceBriefRead",
+    "ServiceBriefRead",
+    "WorkScheduleRead",
+    "WorkScheduleCreate",
+    "WorkScheduleUpdate",
+    "SlotRead",
+    "SlotGenerateRequest",
+    "SlotGenerateResponse",
+    "BookingRead",
+    "BookingCreate",
+    "BookingUpdate",
     "UserLinkCreate",
     "UserLinkRead",
     "UserLinkUpdate",
