@@ -1,9 +1,12 @@
-from ..models import User, Pet, Breed
-from .sqlalchemy_repository import SqlAlchemyRepository
-from ..schemas import Summary, UserSummary, PetSummary
+from sqlalchemy import delete, select
+from sqlalchemy.orm import joinedload, selectinload
 
-from sqlalchemy import select
-from sqlalchemy.orm import selectinload, joinedload
+from ..context import get_current_user
+from ..models import Breed, Pet, User
+from ..models.master_service import MasterService as MasterServiceLink
+from ..permissions.enums.roles import Role
+from ..schemas import PetSummary, Summary, UserSummary
+from .sqlalchemy_repository import SqlAlchemyRepository
 
 
 class UserRepository(SqlAlchemyRepository[User]):
@@ -31,3 +34,47 @@ class UserRepository(SqlAlchemyRepository[User]):
             pets=[PetSummary(id=p.pet_id, name=p.name, breed=p.breed.title,
                              pet_type=p.breed.pet_type.title) for p in u.pets]
         )
+
+    # region мастера (users с ролью groomer)
+
+    async def get_masters(
+        self, limit: int = 100, offset: int = 0
+    ) -> list[User]:
+        return await self.get_multi(
+            order="user_id",
+            limit=limit,
+            offset=offset,
+            role=Role.GROOMER,
+        )
+
+    async def replace_master_services(
+        self, master_id: int, service_ids: list[int]
+    ) -> None:
+        """Полностью переписать набор услуг мастера (many-to-many)."""
+        await self.session.execute(
+            delete(MasterServiceLink).where(
+                MasterServiceLink.master_id == master_id
+            )
+        )
+        user = get_current_user()
+        user_id = user.user_id if user is not None else 0
+        for service_id in dict.fromkeys(service_ids):
+            self.session.add(
+                MasterServiceLink(
+                    master_id=master_id,
+                    service_id=service_id,
+                    who_create=user_id,
+                    who_update=user_id,
+                )
+            )
+        await self.session.flush()
+
+    async def get_master_service_ids(self, master_id: int) -> set[int]:
+        rows = await self.session.execute(
+            select(MasterServiceLink.service_id).where(
+                MasterServiceLink.master_id == master_id
+            )
+        )
+        return set(rows.scalars().all())
+
+    # endregion

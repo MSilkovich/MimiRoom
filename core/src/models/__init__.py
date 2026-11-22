@@ -1,4 +1,5 @@
 from .base_model import Base
+from .master_service import MasterService
 from .measure_unit import MeasureUnit
 from .pet_type import PetType
 from .breed import Breed
@@ -10,13 +11,13 @@ from .service_consumable import ServiceConsumable
 from .refresh_token import RefreshToken
 from .token_type import TokenType
 from .user_link import UserLink
-from .resource import Resource, resource_services
 from .work_schedule import WorkSchedule
 from .slot import Slot
 from .booking import Booking
 
 __all__ = [
     "Base",
+    "MasterService",
     "MeasureUnit",
     "PetType",
     "Breed",
@@ -28,8 +29,6 @@ __all__ = [
     "RefreshToken",
     "TokenType",
     "UserLink",
-    "Resource",
-    "resource_services",
     "WorkSchedule",
     "Slot",
     "Booking",

@@ -1,6 +1,6 @@
 """Репозиторий для работы с услугами, слотами и бронированиями backend API.
 
-Новая модель записи (slot-based):
+Новая модель записи (slot-based, мастер = user):
 1. ``get_services``      — каталог услуг (с длительностью, буферами и мастерами);
 2. ``get_service``       — одна услуга из каталога (для выбора мастера);
 3. ``get_availability``  — свободные слоты мастера по услуге на период;
@@ -32,7 +32,7 @@ class BackendRepository(BaseRepository):
         """Вернуть список услуг.
 
         Каждый элемент — ``ServiceRead``: ``service_id``, ``title``,
-        ``price``, ``duration_minutes``, буферы и ``resources`` (мастера,
+        ``price``, ``duration_minutes``, буферы и ``masters`` (мастера,
         которые услугу оказывают).
         """
         return await self._request(
@@ -51,7 +51,7 @@ class BackendRepository(BaseRepository):
 
     async def get_availability(
         self,
-        resource_id: int,
+        master_id: int,
         service_id: int,
         date_from: str,
         date_to: str,
@@ -62,7 +62,7 @@ class BackendRepository(BaseRepository):
         """Вернуть слоты мастера по услуге на период.
 
         Args:
-            resource_id: id мастера.
+            master_id: id мастера (user_id).
             service_id: id услуги.
             date_from: дата начала ``YYYY-MM-DD``.
             date_to: дата окончания ``YYYY-MM-DD`` (включительно).
@@ -71,7 +71,7 @@ class BackendRepository(BaseRepository):
             limit: максимум слотов.
         """
         params: dict[str, Any] = {
-            "resource_id": resource_id,
+            "master_id": master_id,
             "service_id": service_id,
             "date_from": date_from,
             "date_to": date_to,
@@ -90,24 +90,35 @@ class BackendRepository(BaseRepository):
     async def create_booking(
         self,
         slot_id: int,
-        client_name: str,
-        client_phone: str,
+        client_name: str | None = None,
+        client_phone: str | None = None,
+        client_id: int | None = None,
+        pet_id: int | None = None,
         comment: str | None = None,
+        options: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """Создать бронь по слоту.
 
-        Сервер сам переводит слот в ``booked`` и валидирует пересечения.
+        Клиент может быть авторизованным (``client_id``) либо гостем
+        (``client_name`` + ``client_phone``). Сервер сам переводит слот в
+        ``booked`` и валидирует пересечения.
 
         Returns:
             ``BookingRead`` в виде dict (с вложенным ``slot``).
         """
-        payload: dict[str, Any] = {
-            "slot_id": slot_id,
-            "client_name": client_name,
-            "client_phone": client_phone,
-        }
+        payload: dict[str, Any] = {"slot_id": slot_id}
+        if client_id is not None:
+            payload["client_id"] = client_id
+        if client_name:
+            payload["client_name"] = client_name
+        if client_phone:
+            payload["client_phone"] = client_phone
+        if pet_id is not None:
+            payload["pet_id"] = pet_id
         if comment:
             payload["comment"] = comment
+        if options:
+            payload["options"] = options
 
         return await self._request(
             "POST",

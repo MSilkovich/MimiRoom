@@ -9,7 +9,7 @@ from src.models.enums.slot_status import SlotStatus
 
 class SlotRead(Base):
     slot_id: int
-    resource_id: int
+    master_id: int
     service_id: int
     start_time: datetime
     end_time: datetime
@@ -21,7 +21,7 @@ class SlotRead(Base):
         "json_schema_extra": {
             "example": {
                 "slot_id": 1,
-                "resource_id": 1,
+                "master_id": 1,
                 "service_id": 3,
                 "start_time": "2026-11-24T09:00:00+03:00",
                 "end_time": "2026-11-24T10:00:00+03:00",
@@ -33,7 +33,7 @@ class SlotRead(Base):
 
 
 class SlotGenerateRequest(Base):
-    resource_id: int = Field(..., examples=[1])
+    master_id: int = Field(..., examples=[1])
     service_id: int = Field(..., examples=[3])
     date_from: date = Field(..., examples=["2026-11-24"])
     date_to: date = Field(..., examples=["2026-11-30"])

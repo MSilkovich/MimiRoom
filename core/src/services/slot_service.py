@@ -3,10 +3,11 @@ from datetime import date, datetime, time, timedelta
 from src.excpetions.crud import NotFoundError, ValidationError
 from src.models.booking import Booking
 from src.models.enums.slot_status import SlotStatus
-from src.models.resource import Resource
 from src.models.service import Service
 from src.models.slot import Slot
+from src.models.user import User
 from src.models.work_schedule import WorkSchedule
+from src.permissions.enums.roles import Role
 from src.schemas import SlotGenerateRequest, SlotRead
 from .base import BaseService
 from .slot_generator import (
@@ -31,7 +32,7 @@ def _normalize_dt(value: datetime, tz) -> datetime:
 
 
 async def recalculate_slot_statuses(
-    uow, resource_id: int, day_start: datetime, day_end: datetime
+    uow, master_id: int, day_start: datetime, day_end: datetime
 ) -> None:
     """Пересчитать статусы слотов мастера за окно ``[day_start, day_end)``.
 
@@ -47,7 +48,7 @@ async def recalculate_slot_statuses(
     booking_repo = uow.repository(Booking)
     service_repo = uow.repository(Service)
 
-    slots = await slot_repo.list_range(resource_id, day_start, day_end)
+    slots = await slot_repo.list_range(master_id, day_start, day_end)
     if not slots:
         return
 
@@ -56,8 +57,8 @@ async def recalculate_slot_statuses(
     )
     service_map = {service.service_id: service for service in services}
 
-    active_bookings = await booking_repo.get_active_for_resource(
-        resource_id, day_start, day_end
+    active_bookings = await booking_repo.get_active_for_master(
+        master_id, day_start, day_end
     )
     booked_slot_ids = {booking.slot_id for booking in active_bookings}
 
@@ -115,27 +116,23 @@ class SlotService(BaseService[Slot, SlotRead, SlotRead]):
             raise ValidationError("date_to не может быть раньше date_from")
 
         async with self.uow_factory() as uow:
-            resource_repo = uow.repository(Resource)
+            user_repo = uow.repository(User)
             service_repo = uow.repository(Service)
             schedule_repo = uow.repository(WorkSchedule)
             slot_repo = uow.repository(Slot)
 
-            resource = await resource_repo.get_single(
-                resource_id=data.resource_id
-            )
-            if resource is None:
+            master = await user_repo.get_single(user_id=data.master_id)
+            if master is None:
                 raise NotFoundError("Мастер не найден")
-            if not resource.is_active:
-                raise ValidationError("Мастер неактивен")
+            if master.role != Role.GROOMER:
+                raise ValidationError("Пользователь не является мастером")
 
             service = await service_repo.get_single(service_id=data.service_id)
             if service is None:
                 raise NotFoundError("Услуга не найдена")
-            if not service.is_active:
-                raise ValidationError("Услуга неактивна")
 
-            offered_service_ids = await resource_repo.get_service_ids(
-                data.resource_id
+            offered_service_ids = await user_repo.get_master_service_ids(
+                data.master_id
             )
             if data.service_id not in offered_service_ids:
                 raise ValidationError("Мастер не оказывает выбранную услугу")
@@ -144,7 +141,7 @@ class SlotService(BaseService[Slot, SlotRead, SlotRead]):
             if duration is None or duration <= 0:
                 raise ValidationError("У услуги не задана длительность")
 
-            schedules = await schedule_repo.get_for_resource(data.resource_id)
+            schedules = await schedule_repo.get_for_master(data.master_id)
             by_weekday = {
                 schedule.weekday: schedule
                 for schedule in schedules
@@ -166,7 +163,7 @@ class SlotService(BaseService[Slot, SlotRead, SlotRead]):
                 )
 
                 existing = await slot_repo.existing_start_times(
-                    data.resource_id, data.service_id, day_start, day_end
+                    data.master_id, data.service_id, day_start, day_end
                 )
                 existing_normalized = {
                     _normalize_dt(value, tz) for value in existing
@@ -184,7 +181,7 @@ class SlotService(BaseService[Slot, SlotRead, SlotRead]):
 
                 items = [
                     {
-                        "resource_id": data.resource_id,
+                        "master_id": data.master_id,
                         "service_id": data.service_id,
                         "start_time": start,
                         "end_time": end,
@@ -205,7 +202,7 @@ class SlotService(BaseService[Slot, SlotRead, SlotRead]):
 
     async def list_availability(
         self,
-        resource_id: int,
+        master_id: int,
         service_id: int,
         date_from: date,
         date_to: date,
@@ -217,7 +214,7 @@ class SlotService(BaseService[Slot, SlotRead, SlotRead]):
         """Вернуть слоты с признаком доступности (пересчитанным по броням)."""
         await self.generate(
             SlotGenerateRequest(
-                resource_id=resource_id,
+                master_id=master_id,
                 service_id=service_id,
                 date_from=date_from,
                 date_to=date_to,
@@ -230,13 +227,13 @@ class SlotService(BaseService[Slot, SlotRead, SlotRead]):
         end = datetime.combine(date_to + timedelta(days=1), time.min, tzinfo=tz)
 
         async with self.uow_factory() as uow:
-            await recalculate_slot_statuses(uow, resource_id, start, end)
+            await recalculate_slot_statuses(uow, master_id, start, end)
             await uow.commit()
 
         async with self.uow_factory() as uow:
             slot_repo = uow.repository(Slot)
             slots = await slot_repo.list_range(
-                resource_id, start, end, service_id=service_id
+                master_id, start, end, service_id=service_id
             )
 
         for slot in slots:
@@ -253,7 +250,7 @@ class SlotService(BaseService[Slot, SlotRead, SlotRead]):
         limit: int = 100,
         offset: int = 0,
         rule=None,
-        resource_id: int | None = None,
+        master_id: int | None = None,
         service_id: int | None = None,
         date_from: date | None = None,
         date_to: date | None = None,
@@ -273,7 +270,7 @@ class SlotService(BaseService[Slot, SlotRead, SlotRead]):
         async with self.uow_factory() as uow:
             repo = uow.repository(Slot)
             return await repo.list_filtered(
-                resource_id=resource_id,
+                master_id=master_id,
                 service_id=service_id,
                 start=start,
                 end=end,

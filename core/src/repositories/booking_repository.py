@@ -8,17 +8,17 @@ from ..models.slot import Slot
 from .sqlalchemy_repository import SqlAlchemyRepository
 
 # Пространство имён advisory-lock, чтобы не пересекаться с другими блокировками.
-RESOURCE_LOCK_NAMESPACE = 74261
+MASTER_LOCK_NAMESPACE = 74261
 
 
 class BookingRepository(SqlAlchemyRepository[Booking]):
     def __init__(self, session):
         super().__init__(Booking, session)
 
-    async def acquire_resource_lock(self, resource_id: int) -> None:
+    async def acquire_master_lock(self, master_id: int) -> None:
         """Транзакционный advisory-lock по мастеру.
 
-        Сериализует создание/отмену броней одного ресурса, поэтому два
+        Сериализует создание/отмену броней одного мастера, поэтому два
         параллельных запроса на пересекающиеся слоты не пройдут одновременно.
         На не-PostgreSQL диалектах (например, в юнит-тестах) просто no-op:
         там защиту обеспечивает уникальный индекс по ``slot_id``.
@@ -28,23 +28,23 @@ class BookingRepository(SqlAlchemyRepository[Booking]):
             return
         await self.session.execute(
             text("SELECT pg_advisory_xact_lock(:namespace, :key)"),
-            {"namespace": RESOURCE_LOCK_NAMESPACE, "key": resource_id},
+            {"namespace": MASTER_LOCK_NAMESPACE, "key": master_id},
         )
 
-    async def get_active_for_resource(
+    async def get_active_for_master(
         self,
-        resource_id: int,
+        master_id: int,
         start: datetime | None = None,
         end: datetime | None = None,
     ) -> list[Booking]:
         """Активные (не отменённые) брони мастера; при желании — в окне дат.
 
-        Связанные ``slot`` и ``service`` подгружаются selectin'ом, чтобы в
-        сервисном слое можно было посчитать интервал с учётом буферов без
-        дополнительных запросов.
+        Связанные ``slot``, ``service``, ``client`` и ``pet`` подгружаются
+        selectin'ом, чтобы в сервисном слое можно было посчитать интервал с
+        учётом буферов без дополнительных запросов.
         """
         stmt = select(Booking).where(
-            Booking.resource_id == resource_id,
+            Booking.master_id == master_id,
             Booking.is_deleted.is_(False),
             Booking.status.in_(
                 [BookingStatus.PENDING, BookingStatus.CONFIRMED]

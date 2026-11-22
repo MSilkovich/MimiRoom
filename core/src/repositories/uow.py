@@ -12,7 +12,6 @@ from ..models import (
     ServiceConsumable,
     RefreshToken,
     UserLink,
-    Resource,
     WorkSchedule,
     Slot,
     Booking,
@@ -27,7 +26,6 @@ from .pet_repository import PetRepository
 from .service_consumable_repository import ServiceConsumableRepository
 from .tokens_repository import RefreshTokenRepository
 from .user_link_repository import UserLinkRepository
-from .resource_repository import ResourceRepository
 from .work_schedule_repository import WorkScheduleRepository
 from .slot_repository import SlotRepository
 from .booking_repository import BookingRepository
@@ -58,7 +56,6 @@ class SqlAlchemyUnitOfWork(UnitOfWork):
         self.service_consumables = ServiceConsumableRepository(self.session)
         self.refresh_tokens = RefreshTokenRepository(self.session)
         self.user_links = UserLinkRepository(self.session)
-        self.resources = ResourceRepository(self.session)
         self.work_schedules = WorkScheduleRepository(self.session)
         self.slots = SlotRepository(self.session)
         self.bookings = BookingRepository(self.session)
@@ -74,7 +71,6 @@ class SqlAlchemyUnitOfWork(UnitOfWork):
             ServiceConsumable: self.service_consumables,
             UserLink: self.user_links,
             RefreshToken: self.refresh_tokens,
-            Resource: self.resources,
             WorkSchedule: self.work_schedules,
             Slot: self.slots,
             Booking: self.bookings,

@@ -1,7 +1,7 @@
 """CRUD для графика работы мастеров (WorkSchedule).
 
 Путь: /work-schedules*
-- GET    /work-schedules              — список (можно отфильтровать по resource_id)
+- GET    /work-schedules              — список (можно отфильтровать по master_id)
 - GET    /work-schedules/{id}         — один элемент
 - POST   /work-schedules              — создать
 - PUT    /work-schedules/{id}         — обновить
@@ -28,7 +28,7 @@ router = APIRouter(prefix="/work-schedules", tags=["work-schedules"], dependenci
 
 @router.get("", response_model=list[WorkScheduleRead])
 async def work_schedule_list(
-    resource_id: int | None = None,
+    master_id: int | None = None,
     limit: int = 100,
     offset: int = 0,
     service: WorkScheduleService = Depends(
@@ -37,7 +37,7 @@ async def work_schedule_list(
 ):
     """Вернуть графики работы (опционально — только одного мастера)."""
     return await service.get_multi(
-        limit=limit, offset=offset, resource_id=resource_id
+        limit=limit, offset=offset, master_id=master_id
     )
 
 

@@ -24,14 +24,14 @@ class SlotRepository(SqlAlchemyRepository[Slot]):
 
     async def list_range(
         self,
-        resource_id: int,
+        master_id: int,
         start: datetime,
         end: datetime,
         service_id: int | None = None,
     ) -> list[Slot]:
         """Слоты мастера, начинающиеся в интервале ``[start, end)``."""
         stmt = select(Slot).where(
-            Slot.resource_id == resource_id,
+            Slot.master_id == master_id,
             Slot.start_time >= start,
             Slot.start_time < end,
             Slot.is_deleted.is_(False),
@@ -44,14 +44,14 @@ class SlotRepository(SqlAlchemyRepository[Slot]):
 
     async def existing_start_times(
         self,
-        resource_id: int,
+        master_id: int,
         service_id: int,
         start: datetime,
         end: datetime,
     ) -> set[datetime]:
         """Уже существующие ``start_time`` (для идемпотентной генерации)."""
         stmt = select(Slot.start_time).where(
-            Slot.resource_id == resource_id,
+            Slot.master_id == master_id,
             Slot.service_id == service_id,
             Slot.start_time >= start,
             Slot.start_time < end,
@@ -62,7 +62,7 @@ class SlotRepository(SqlAlchemyRepository[Slot]):
 
     async def list_filtered(
         self,
-        resource_id: int | None = None,
+        master_id: int | None = None,
         service_id: int | None = None,
         start: datetime | None = None,
         end: datetime | None = None,
@@ -71,8 +71,8 @@ class SlotRepository(SqlAlchemyRepository[Slot]):
         offset: int = 0,
     ) -> list[Slot]:
         stmt = select(Slot).where(Slot.is_deleted.is_(False))
-        if resource_id is not None:
-            stmt = stmt.where(Slot.resource_id == resource_id)
+        if master_id is not None:
+            stmt = stmt.where(Slot.master_id == master_id)
         if service_id is not None:
             stmt = stmt.where(Slot.service_id == service_id)
         if start is not None:

@@ -7,7 +7,7 @@ from .base_schema import Base
 
 class WorkScheduleRead(Base):
     work_schedule_id: int
-    resource_id: int
+    master_id: int
     weekday: int
     start_time: time_type
     end_time: time_type
@@ -17,7 +17,7 @@ class WorkScheduleRead(Base):
         "json_schema_extra": {
             "example": {
                 "work_schedule_id": 1,
-                "resource_id": 1,
+                "master_id": 1,
                 "weekday": 0,
                 "start_time": "09:00:00",
                 "end_time": "18:00:00",
@@ -28,7 +28,7 @@ class WorkScheduleRead(Base):
 
 
 class WorkScheduleCreate(Base):
-    resource_id: int = Field(..., examples=[1])
+    master_id: int = Field(..., examples=[1])
     weekday: int = Field(..., ge=0, le=6, examples=[0])
     start_time: time_type = Field(..., examples=["09:00:00"])
     end_time: time_type = Field(..., examples=["18:00:00"])

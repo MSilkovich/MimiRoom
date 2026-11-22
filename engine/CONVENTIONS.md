@@ -191,7 +191,7 @@ Adapter ──[bot:tasks]──> Engine ──[LLM]──> Engine ──[bot:res
 - `handler` — асинхронная функция, реализованная в `handlers/`.
 - **Текущие инструменты**:
   1. `get_services` — GET `/api/v0.0.1/s/services` — каталог услуг (цена, длительность, мастера).
-  2. `get_availability` — GET `/api/v0.0.1/slots/availability` — свободные слоты по услуге и дате (`service_id`, `date_from`, опц. `date_to`, `resource_id`).
+  2. `get_availability` — GET `/api/v0.0.1/slots/availability` — свободные слоты по услуге и дате (`service_id`, `date_from`, опц. `date_to`, `master_id`).
   3. `create_booking` — POST `/api/v0.0.1/bookings` — создание брони по `slot_id` + `client_name`, `client_phone`, опц. `comment`.
 - **Цепочка записи**: `get_services` → `get_availability` → выбор `slot_id` → `create_booking`. `slot_id` берётся только из ответа `get_availability`.
 - **Цепочка вызова**: LLM → registry.get_handler() → handlers.xxx() → repositories.BookingRepository → BaseRepository._request() → HTTP → Backend API.

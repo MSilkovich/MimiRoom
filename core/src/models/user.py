@@ -1,8 +1,8 @@
 from typing import TYPE_CHECKING
 
-from sqlalchemy import BigInteger, ForeignKey, String, text
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy import BigInteger, String, text
 from sqlalchemy import Enum as SAEnum
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.permissions.role_permissions import ROLE_MASK
 
@@ -11,8 +11,12 @@ from .base_model import Base
 from src.permissions.enums.roles import Role
 
 if TYPE_CHECKING:
+    from .booking import Booking
     from .pet import Pet
     from .refresh_token import RefreshToken
+    from .service import Service
+    from .slot import Slot
+    from .work_schedule import WorkSchedule
     from src.schemas.user import UserLink
 
 
@@ -46,6 +50,35 @@ class User(Base):
         "Pet",
         back_populates="owner",
         lazy="selectin"
+    )
+
+    services: Mapped[list["Service"]] = relationship(
+        "Service",
+        secondary="master_services",
+        lazy="selectin",
+        viewonly=True,
+    )
+    work_schedules: Mapped[list["WorkSchedule"]] = relationship(
+        "WorkSchedule",
+        back_populates="master",
+        lazy="select",
+    )
+    slots: Mapped[list["Slot"]] = relationship(
+        "Slot",
+        back_populates="master",
+        lazy="select",
+    )
+    bookings_as_master: Mapped[list["Booking"]] = relationship(
+        "Booking",
+        back_populates="master",
+        foreign_keys="Booking.master_id",
+        lazy="select",
+    )
+    bookings_as_client: Mapped[list["Booking"]] = relationship(
+        "Booking",
+        back_populates="client",
+        foreign_keys="Booking.client_id",
+        lazy="select",
     )
 
     refresh_tokens: Mapped[list["RefreshToken"]] = relationship(

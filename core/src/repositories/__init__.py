@@ -11,7 +11,6 @@ from .user_repository import UserRepository
 from .user_link_repository import UserLinkRepository
 from .pet_repository import PetRepository
 from .service_consumable_repository import ServiceConsumableRepository
-from .resource_repository import ResourceRepository
 from .work_schedule_repository import WorkScheduleRepository
 from .slot_repository import SlotRepository
 from .booking_repository import BookingRepository
@@ -31,7 +30,6 @@ __all__ = [
     "UserLinkRepository",
     "PetRepository",
     "ServiceConsumableRepository",
-    "ResourceRepository",
     "WorkScheduleRepository",
     "SlotRepository",
     "BookingRepository",

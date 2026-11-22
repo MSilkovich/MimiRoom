@@ -31,7 +31,7 @@ router = APIRouter(prefix="/slots", tags=["slots"], dependencies=[
 
 @router.get("", response_model=list[SlotRead])
 async def slot_list(
-    resource_id: int | None = None,
+    master_id: int | None = None,
     service_id: int | None = None,
     date_from: date | None = None,
     date_to: date | None = None,
@@ -42,7 +42,7 @@ async def slot_list(
 ):
     """Вернуть сохранённые слоты с фильтрами."""
     return await service.get_multi(
-        resource_id=resource_id,
+        master_id=master_id,
         service_id=service_id,
         date_from=date_from,
         date_to=date_to,
@@ -54,7 +54,7 @@ async def slot_list(
 
 @router.get("/availability", response_model=list[SlotRead])
 async def slot_availability(
-    resource_id: int,
+    master_id: int,
     service_id: int,
     date_from: date,
     date_to: date,
@@ -70,7 +70,7 @@ async def slot_availability(
     по активным бронированиям. ``available=true`` — слот можно бронировать.
     """
     return await service.list_availability(
-        resource_id=resource_id,
+        master_id=master_id,
         service_id=service_id,
         date_from=date_from,
         date_to=date_to,

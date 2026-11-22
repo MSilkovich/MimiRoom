@@ -2,15 +2,15 @@ from datetime import timedelta
 from decimal import Decimal
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Boolean, ForeignKey, Interval, Numeric, String, true
+from sqlalchemy import ForeignKey, Interval, Numeric, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .base_model import Base
 
 if TYPE_CHECKING:
     from .breed import Breed
-    from .resource import Resource
     from .service_consumable import ServiceConsumable
+    from .user import User
 
 
 class Service(Base):
@@ -28,9 +28,6 @@ class Service(Base):
     buffer_after_minutes: Mapped[int] = mapped_column(
         nullable=False, default=0, server_default="0"
     )
-    is_active: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, default=True, server_default=true()
-    )
     breed_id: Mapped[int | None] = mapped_column(
         "breed",
         ForeignKey("breed.breed_id")
@@ -43,11 +40,11 @@ class Service(Base):
             return None
         return int(self.duration.total_seconds() // 60)
 
-    resources: Mapped[list["Resource"]] = relationship(
-        "Resource",
-        secondary="resource_services",
-        back_populates="services",
+    masters: Mapped[list["User"]] = relationship(
+        "User",
+        secondary="master_services",
         lazy="selectin",
+        viewonly=True,
     )
 
     breed: Mapped["Breed | None"] = relationship(

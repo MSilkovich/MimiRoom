@@ -87,7 +87,7 @@ class TestAvailability:
         )
 
         await backend_repo.get_availability(
-            resource_id=1,
+            master_id=1,
             service_id=2,
             date_from="2026-11-24",
             date_to="2026-11-25",
@@ -97,7 +97,7 @@ class TestAvailability:
             "GET",
             "/api/v0.0.1/slots/availability",
             params={
-                "resource_id": 1,
+                "master_id": 1,
                 "service_id": 2,
                 "date_from": "2026-11-24",
                 "date_to": "2026-11-25",

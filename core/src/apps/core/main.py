@@ -72,8 +72,8 @@ Access-токен передаётся в заголовке `Authorization: Bea
                 "description": "Справочник единиц измерения (мл, г, шт, ...).",
             },
             {
-                "name": "resources",
-                "description": "Мастера/исполнители: услуги, которые они оказывают.",
+                "name": "masters",
+                "description": "Мастера (bookable users): услуги, которые они оказывают.",
             },
             {
                 "name": "work-schedules",

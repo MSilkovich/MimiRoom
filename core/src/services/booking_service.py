@@ -1,10 +1,12 @@
 from datetime import datetime, time, timedelta
 
-from src.excpetions.crud import ConflictError, NotFoundError
+from src.excpetions.crud import ConflictError, NotFoundError, ValidationError
 from src.models.booking import Booking
 from src.models.enums.booking_status import BookingStatus
 from src.models.enums.slot_status import SlotStatus
+from src.models.pet import Pet
 from src.models.slot import Slot
+from src.models.user import User
 from src.schemas import BookingCreate, BookingUpdate
 from .base import BaseService
 from .slot_generator import get_default_tz, intervals_overlap, slot_footprint
@@ -21,6 +23,11 @@ def _day_bounds(slot: Slot) -> tuple[datetime, datetime]:
 class BookingService(BaseService[Booking, BookingCreate, BookingUpdate]):
     model = Booking
 
+    @staticmethod
+    def _client_snapshot(user: User) -> tuple[str, str | None]:
+        full_name = f"{user.name} {user.surname}".strip()
+        return full_name or user.login, user.phone
+
     async def create(self, data: BookingCreate) -> Booking:
         """Создать бронь с защитой от гонок.
 
@@ -33,14 +40,16 @@ class BookingService(BaseService[Booking, BookingCreate, BookingUpdate]):
         async with self.uow_factory() as uow:
             slot_repo = uow.repository(Slot)
             booking_repo = uow.repository(Booking)
+            user_repo = uow.repository(User)
+            pet_repo = uow.repository(Pet)
 
             slot = await slot_repo.get_single(slot_id=data.slot_id)
             if slot is None:
                 raise NotFoundError("Слот не найден")
 
-            # Блокировка на уровне ресурса: даже брони на разные, но
+            # Блокировка на уровне мастера: даже брони на разные, но
             # пересекающиеся слоты одного мастера не пройдут одновременно.
-            await booking_repo.acquire_resource_lock(slot.resource_id)
+            await booking_repo.acquire_master_lock(slot.master_id)
 
             # Перечитываем слот уже под блокировкой строки.
             slot = await slot_repo.get_for_update(data.slot_id)
@@ -54,9 +63,38 @@ class BookingService(BaseService[Booking, BookingCreate, BookingUpdate]):
             if service is None:
                 raise NotFoundError("Услуга слота не найдена")
 
+            # --- клиент: авторизованный или гость -------------------------
+            client_name = data.client_name
+            client_phone = data.client_phone
+            if data.client_id is not None:
+                client = await user_repo.get_single(user_id=data.client_id)
+                if client is None:
+                    raise NotFoundError("Клиент не найден")
+                snapshot_name, snapshot_phone = self._client_snapshot(client)
+                client_name = client_name or snapshot_name
+                client_phone = client_phone or snapshot_phone
+            if not client_name or not client_phone:
+                raise ValidationError(
+                    "Укажите client_id или client_name и client_phone"
+                )
+
+            # --- питомец ---------------------------------------------------
+            if data.pet_id is not None:
+                pet = await pet_repo.get_single(pet_id=data.pet_id)
+                if pet is None:
+                    raise NotFoundError("Питомец не найден")
+                if (
+                    data.client_id is not None
+                    and pet.owner_id is not None
+                    and pet.owner_id != data.client_id
+                ):
+                    raise ValidationError(
+                        "Питомец не принадлежит указанному клиенту"
+                    )
+
             day_start, day_end = _day_bounds(slot)
-            active_bookings = await booking_repo.get_active_for_resource(
-                slot.resource_id, day_start, day_end
+            active_bookings = await booking_repo.get_active_for_master(
+                slot.master_id, day_start, day_end
             )
 
             target_footprint = slot_footprint(
@@ -84,10 +122,13 @@ class BookingService(BaseService[Booking, BookingCreate, BookingUpdate]):
                 {
                     "slot_id": slot.slot_id,
                     "service_id": slot.service_id,
-                    "resource_id": slot.resource_id,
-                    "client_name": data.client_name,
-                    "client_phone": data.client_phone,
+                    "master_id": slot.master_id,
+                    "client_id": data.client_id,
+                    "pet_id": data.pet_id,
+                    "client_name": client_name,
+                    "client_phone": client_phone,
                     "comment": data.comment,
+                    "options": data.options,
                     "status": BookingStatus.PENDING,
                 }
             )
@@ -95,7 +136,7 @@ class BookingService(BaseService[Booking, BookingCreate, BookingUpdate]):
                 {"status": SlotStatus.BOOKED}, slot_id=slot.slot_id
             )
             await recalculate_slot_statuses(
-                uow, slot.resource_id, day_start, day_end
+                uow, slot.master_id, day_start, day_end
             )
 
             await uow.commit()
@@ -123,7 +164,7 @@ class BookingService(BaseService[Booking, BookingCreate, BookingUpdate]):
             if slot is not None:
                 day_start, day_end = _day_bounds(slot)
                 await recalculate_slot_statuses(
-                    uow, slot.resource_id, day_start, day_end
+                    uow, slot.master_id, day_start, day_end
                 )
 
             await uow.commit()
@@ -147,7 +188,7 @@ class BookingService(BaseService[Booking, BookingCreate, BookingUpdate]):
                 if slot is not None:
                     day_start, day_end = _day_bounds(slot)
                     await recalculate_slot_statuses(
-                        uow, slot.resource_id, day_start, day_end
+                        uow, slot.master_id, day_start, day_end
                     )
 
             await uow.commit()
@@ -170,7 +211,7 @@ class BookingService(BaseService[Booking, BookingCreate, BookingUpdate]):
                 if slot is not None:
                     day_start, day_end = _day_bounds(slot)
                     await recalculate_slot_statuses(
-                        uow, slot.resource_id, day_start, day_end
+                        uow, slot.master_id, day_start, day_end
                     )
             await booking_repo.delete(booking_id=pk)
             await uow.commit()
@@ -181,12 +222,15 @@ class BookingService(BaseService[Booking, BookingCreate, BookingUpdate]):
         limit: int = 100,
         offset: int = 0,
         rule=None,
-        resource_id: int | None = None,
+        master_id: int | None = None,
+        client_id: int | None = None,
         status: BookingStatus | None = None,
     ) -> list[Booking]:
         filters: dict = {}
-        if resource_id is not None:
-            filters["resource_id"] = resource_id
+        if master_id is not None:
+            filters["master_id"] = master_id
+        if client_id is not None:
+            filters["client_id"] = client_id
         if status is not None:
             filters["status"] = status
         async with self.uow_factory() as uow:

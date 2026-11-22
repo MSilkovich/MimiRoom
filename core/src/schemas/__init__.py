@@ -18,11 +18,11 @@ from .service_consumable import (
     ServiceConsumableCreate,
     ServiceConsumableUpdate,
 )
-from .resource import (
-    ResourceRead,
-    ResourceCreate,
-    ResourceUpdate,
-    ResourceBriefRead,
+from .master import (
+    MasterRead,
+    MasterCreate,
+    MasterUpdate,
+    MasterBriefRead,
     ServiceBriefRead,
 )
 from .work_schedule import (
@@ -60,10 +60,10 @@ __all__ = [
     "ServiceConsumableRead",
     "ServiceConsumableCreate",
     "ServiceConsumableUpdate",
-    "ResourceRead",
-    "ResourceCreate",
-    "ResourceUpdate",
-    "ResourceBriefRead",
+    "MasterRead",
+    "MasterCreate",
+    "MasterUpdate",
+    "MasterBriefRead",
     "ServiceBriefRead",
     "WorkScheduleRead",
     "WorkScheduleCreate",

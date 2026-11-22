@@ -1,7 +1,7 @@
 """Бронирования (Booking) — новая модель записи.
 
 Путь: /bookings*
-- GET    /bookings              — список (фильтры: resource_id, status)
+- GET    /bookings              — список (фильтры: master_id, client_id, status)
 - GET    /bookings/{id}         — одно бронирование
 - POST   /bookings              — создать (переводит слот в booked)
 - PUT    /bookings/{id}         — обновить
@@ -24,7 +24,8 @@ router = APIRouter(prefix="/bookings", tags=["bookings"])
 
 @router.get("", response_model=list[BookingRead])
 async def booking_list(
-    resource_id: int | None = None,
+    master_id: int | None = None,
+    client_id: int | None = None,
     status: BookingStatus | None = None,
     limit: int = 100,
     offset: int = 0,
@@ -35,7 +36,8 @@ async def booking_list(
     return await service.get_multi(
         limit=limit,
         offset=offset,
-        resource_id=resource_id,
+        master_id=master_id,
+        client_id=client_id,
         status=status,
     )
 

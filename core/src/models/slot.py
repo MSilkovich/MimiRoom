@@ -15,24 +15,24 @@ from .enums.slot_status import SlotStatus
 
 if TYPE_CHECKING:
     from .booking import Booking
-    from .resource import Resource
     from .service import Service
+    from .user import User
 
 
 class Slot(Base):
     """Слот — конкретный интервал времени мастера под конкретную услугу.
 
-    Слоты генерируются по ``work_schedules`` и длительности услуги (+ буферы)
-    модулем ``src/services/slot_generator.py``. ``start_time``/``end_time`` —
-    это интервал самой услуги; буферы до/после учитываются при проверке
-    пересечений (см. ``slot_generator.slot_footprint``).
+    Мастер — это ``user`` (``master_id``). Слоты генерируются по
+    ``work_schedules`` и длительности услуги (+ буферы) модулем
+    ``src/services/slot_generator.py``. ``start_time``/``end_time`` — интервал
+    самой услуги; буферы до/после учитываются при проверке пересечений.
     """
 
     __tablename__ = "slots"
 
     slot_id: Mapped[int] = mapped_column(primary_key=True)
-    resource_id: Mapped[int] = mapped_column(
-        ForeignKey("resources.resource_id", ondelete="CASCADE"),
+    master_id: Mapped[int] = mapped_column(
+        ForeignKey("user.user_id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )
@@ -50,13 +50,13 @@ class Slot(Base):
     status: Mapped[SlotStatus] = mapped_column(
         SAEnum(SlotStatus, name="slot_status"),
         default=SlotStatus.FREE,
-        server_default=SlotStatus.FREE,
+        server_default=SlotStatus.FREE.name,
         nullable=False,
         index=True,
     )
 
-    resource: Mapped["Resource"] = relationship(
-        "Resource", back_populates="slots", lazy="selectin"
+    master: Mapped["User"] = relationship(
+        "User", back_populates="slots", lazy="selectin"
     )
     service: Mapped["Service"] = relationship("Service", lazy="selectin")
     bookings: Mapped[list["Booking"]] = relationship(
@@ -65,10 +65,10 @@ class Slot(Base):
 
     __table_args__ = (
         UniqueConstraint(
-            "resource_id",
+            "master_id",
             "service_id",
             "start_time",
-            name="uq_slots_resource_service_start",
+            name="uq_slots_master_service_start",
         ),
-        Index("ix_slots_resource_start", "resource_id", "start_time"),
+        Index("ix_slots_master_start", "master_id", "start_time"),
     )

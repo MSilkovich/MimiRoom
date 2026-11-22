@@ -13,7 +13,7 @@ class WorkScheduleService(
         async with self.uow_factory() as uow:
             repo = uow.repository(WorkSchedule)
             existing = await repo.get_single(
-                resource_id=data.resource_id, weekday=data.weekday
+                master_id=data.master_id, weekday=data.weekday
             )
             if existing is not None:
                 raise ConflictError(
@@ -29,11 +29,11 @@ class WorkScheduleService(
         limit: int = 100,
         offset: int = 0,
         rule=None,
-        resource_id: int | None = None,
+        master_id: int | None = None,
     ) -> list[WorkSchedule]:
         filters: dict = {}
-        if resource_id is not None:
-            filters["resource_id"] = resource_id
+        if master_id is not None:
+            filters["master_id"] = master_id
         async with self.uow_factory() as uow:
             repo = uow.repository(WorkSchedule)
             return await repo.get_multi(
