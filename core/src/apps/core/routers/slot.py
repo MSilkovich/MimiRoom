@@ -9,7 +9,7 @@
 
 from datetime import date
 
-from fastapi import APIRouter, Depends, Security
+from fastapi import APIRouter, Depends
 
 from src.excpetions.crud import NotFoundError
 from src.models.enums.slot_status import SlotStatus
@@ -20,11 +20,12 @@ from src.schemas import (
     SlotGenerateResponse,
     SlotRead,
 )
-from src.middleware.auth import get_current_user, auth_bearer_scheme
+from src.middleware.mix_scheme import get_principal
 
+# Read/write слотов доступны и пользователю, и сервисному токену
+# (будущая интеграция: Яндекс/бот). get_principal принимает оба типа токена.
 router = APIRouter(prefix="/slots", tags=["slots"], dependencies=[
-    Security(auth_bearer_scheme),
-    Depends(get_current_user),
+    Depends(get_principal),
 ])
 
 

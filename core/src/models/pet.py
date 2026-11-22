@@ -8,7 +8,6 @@ from .base_model import Base
 
 if TYPE_CHECKING:
     from .breed import Breed
-    from .book import Book
     from .user import User
 
 
@@ -35,10 +34,5 @@ class Pet(Base):
     breed: Mapped["Breed | None"] = relationship(
         "Breed",
         back_populates="pets",
-        lazy="selectin"
-    )
-    books: Mapped[list["Book"]] = relationship(
-        "Book",
-        back_populates="pet",
         lazy="selectin"
     )

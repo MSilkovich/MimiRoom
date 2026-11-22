@@ -11,7 +11,6 @@ from .base_model import Base
 from src.permissions.enums.roles import Role
 
 if TYPE_CHECKING:
-    from .book import Book
     from .pet import Pet
     from .refresh_token import RefreshToken
     from src.schemas.user import UserLink
@@ -47,17 +46,6 @@ class User(Base):
         "Pet",
         back_populates="owner",
         lazy="selectin"
-    )
-
-    books_as_master: Mapped[list["Book"]] = relationship(
-        "Book",
-        back_populates="master",
-        foreign_keys="Book.master_id",
-    )
-    books_as_client: Mapped[list["Book"]] = relationship(
-        "Book",
-        back_populates="client",
-        foreign_keys="Book.client_id",
     )
 
     refresh_tokens: Mapped[list["RefreshToken"]] = relationship(

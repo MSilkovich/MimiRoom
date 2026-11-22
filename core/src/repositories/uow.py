@@ -10,10 +10,8 @@ from ..models import (
     User,
     Pet,
     ServiceConsumable,
-    Book,
     RefreshToken,
     UserLink,
-    BookService,
     Resource,
     WorkSchedule,
     Slot,
@@ -27,10 +25,8 @@ from .storage_repository import StorageRepository
 from .user_repository import UserRepository
 from .pet_repository import PetRepository
 from .service_consumable_repository import ServiceConsumableRepository
-from .book_repository import BookRepository
 from .tokens_repository import RefreshTokenRepository
 from .user_link_repository import UserLinkRepository
-from .book_service_repository import BookServiceRepository
 from .resource_repository import ResourceRepository
 from .work_schedule_repository import WorkScheduleRepository
 from .slot_repository import SlotRepository
@@ -60,10 +56,8 @@ class SqlAlchemyUnitOfWork(UnitOfWork):
         self.users = UserRepository(self.session)
         self.pets = PetRepository(self.session)
         self.service_consumables = ServiceConsumableRepository(self.session)
-        self.books = BookRepository(self.session)
         self.refresh_tokens = RefreshTokenRepository(self.session)
         self.user_links = UserLinkRepository(self.session)
-        self.book_service = BookServiceRepository(self.session)
         self.resources = ResourceRepository(self.session)
         self.work_schedules = WorkScheduleRepository(self.session)
         self.slots = SlotRepository(self.session)
@@ -78,10 +72,8 @@ class SqlAlchemyUnitOfWork(UnitOfWork):
             User: self.users,
             Pet: self.pets,
             ServiceConsumable: self.service_consumables,
-            Book: self.books,
             UserLink: self.user_links,
             RefreshToken: self.refresh_tokens,
-            BookService: self.book_service,
             Resource: self.resources,
             WorkSchedule: self.work_schedules,
             Slot: self.slots,

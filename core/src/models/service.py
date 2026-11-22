@@ -8,11 +8,9 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from .base_model import Base
 
 if TYPE_CHECKING:
-    from .book import Book
     from .breed import Breed
     from .resource import Resource
     from .service_consumable import ServiceConsumable
-    from .book_service import BookService
 
 
 class Service(Base):
@@ -61,9 +59,4 @@ class Service(Base):
         "ServiceConsumable",
         back_populates="service",
         lazy="selectin"
-    )
-    book_services: Mapped[list["BookService"]] = relationship(
-        "BookService",
-        back_populates="service",
-        lazy="selectin",
     )

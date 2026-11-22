@@ -18,7 +18,6 @@ from .service_consumable import (
     ServiceConsumableCreate,
     ServiceConsumableUpdate,
 )
-from .book import BookRead, BookCreate, BookUpdate
 from .resource import (
     ResourceRead,
     ResourceCreate,
@@ -61,9 +60,6 @@ __all__ = [
     "ServiceConsumableRead",
     "ServiceConsumableCreate",
     "ServiceConsumableUpdate",
-    "BookRead",
-    "BookCreate",
-    "BookUpdate",
     "ResourceRead",
     "ResourceCreate",
     "ResourceUpdate",

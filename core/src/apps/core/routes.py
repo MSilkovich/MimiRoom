@@ -12,11 +12,11 @@ def get_apps_router() -> APIRouter:
     from .routers import storage_router
     from .routers import service_router, service_router_service
     from .routers import pet_router
-    from .routers import book_router
     from .routers import user_router, user_router_service
     from .routers import user_link_router
     from .routers import staff_router
     from .routers import resource_router
+    from .routers import resource_router_service
     from .routers import work_schedule_router
     from .routers import slot_router
     from .routers import booking_router
@@ -31,8 +31,8 @@ def get_apps_router() -> APIRouter:
     router.include_router(service_router)
     router.include_router(service_router_service)
     router.include_router(pet_router)
-    router.include_router(book_router)
     router.include_router(resource_router)
+    router.include_router(resource_router_service)
     router.include_router(work_schedule_router)
     router.include_router(slot_router)
     router.include_router(booking_router)

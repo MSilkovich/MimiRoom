@@ -7,11 +7,9 @@ from .storage import Storage
 from .user import User
 from .pet import Pet
 from .service_consumable import ServiceConsumable
-from .book import Book
 from .refresh_token import RefreshToken
 from .token_type import TokenType
 from .user_link import UserLink
-from .book_service import BookService
 from .resource import Resource, resource_services
 from .work_schedule import WorkSchedule
 from .slot import Slot
@@ -27,11 +25,9 @@ __all__ = [
     "User",
     "Pet",
     "ServiceConsumable",
-    "Book",
     "RefreshToken",
     "TokenType",
     "UserLink",
-    "BookService",
     "Resource",
     "resource_services",
     "WorkSchedule",

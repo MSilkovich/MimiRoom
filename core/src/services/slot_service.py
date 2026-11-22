@@ -134,6 +134,12 @@ class SlotService(BaseService[Slot, SlotRead, SlotRead]):
             if not service.is_active:
                 raise ValidationError("Услуга неактивна")
 
+            offered_service_ids = await resource_repo.get_service_ids(
+                data.resource_id
+            )
+            if data.service_id not in offered_service_ids:
+                raise ValidationError("Мастер не оказывает выбранную услугу")
+
             duration = minutes_from_duration(service.duration)
             if duration is None or duration <= 0:
                 raise ValidationError("У услуги не задана длительность")
