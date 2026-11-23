@@ -1,10 +1,10 @@
 """Репозиторий для работы с услугами, слотами и бронированиями backend API.
 
-Новая модель записи (slot-based, мастер = user):
+Модель записи (расчётные слоты; мастер = user):
 1. ``get_services``      — каталог услуг (с длительностью, буферами и мастерами);
 2. ``get_service``       — одна услуга из каталога (для выбора мастера);
-3. ``get_availability``  — свободные слоты мастера по услуге на период;
-4. ``create_booking``    — создание брони по конкретному ``slot_id``;
+3. ``get_availability``  — свободные слоты по услуге/мастеру/периоду (POST, тело);
+4. ``create_booking``    — создание брони по ``master_id`` + ``service_id`` + ``start_time``;
 5. ``get_user_summary``  — сводка о пользователе.
 """
 
@@ -51,45 +51,50 @@ class BackendRepository(BaseRepository):
 
     async def get_availability(
         self,
-        master_id: int,
         service_id: int,
         date_from: str,
-        date_to: str,
-        step_minutes: int | None = None,
-        only_available: bool = True,
-        limit: int = 200,
+        date_to: str | None = None,
+        master_id: int | None = None,
+        pet_id: int | None = None,
     ) -> list[dict[str, Any]]:
-        """Вернуть слоты мастера по услуге на период.
+        """Вернуть свободные слоты по услуге на период.
+
+        Вызывает ``POST /slots/available`` к backend API: параметры передаются
+        в теле запроса (не в query). Слоты рассчитываются на сервере на лету;
+        если ``master_id`` не задан — конкретного мастера подбирает backend.
 
         Args:
-            master_id: id мастера (user_id).
             service_id: id услуги.
             date_from: дата начала ``YYYY-MM-DD``.
-            date_to: дата окончания ``YYYY-MM-DD`` (включительно).
-            step_minutes: шаг сетки (необязательно).
-            only_available: вернуть только свободные слоты.
-            limit: максимум слотов.
+            date_to: дата окончания ``YYYY-MM-DD`` (включительно); по умолчанию
+                = ``date_from``.
+            master_id: user_id мастера, если пользователь его выбрал.
+            pet_id: id питомца (задел под расчёт длительности/цены).
+
+        Returns:
+            Список ``{master_id, service_id, start_time, end_time, available}``.
         """
-        params: dict[str, Any] = {
-            "master_id": master_id,
+        payload: dict[str, Any] = {
             "service_id": service_id,
             "date_from": date_from,
-            "date_to": date_to,
-            "only_available": only_available,
-            "limit": limit,
+            "date_to": date_to or date_from,
         }
-        if step_minutes is not None:
-            params["step_minutes"] = step_minutes
+        if master_id is not None:
+            payload["master_id"] = master_id
+        if pet_id is not None:
+            payload["pet_id"] = pet_id
 
         return await self._request(
-            "GET",
-            f"{API_PREFIX}/slots/availability",
-            params=params,
+            "POST",
+            f"{API_PREFIX}/slots/available",
+            json=payload,
         )
 
     async def create_booking(
         self,
-        slot_id: int,
+        master_id: int,
+        service_id: int,
+        start_time: str,
         client_name: str | None = None,
         client_phone: str | None = None,
         client_id: int | None = None,
@@ -97,16 +102,22 @@ class BackendRepository(BaseRepository):
         comment: str | None = None,
         options: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
-        """Создать бронь по слоту.
+        """Создать бронь на конкретное время.
+
+        Время (``start_time``) берётся из ответа ``get_availability``; сервер
+        сам валидирует график, сетку слотов и пересечения (с учётом буферов).
 
         Клиент может быть авторизованным (``client_id``) либо гостем
-        (``client_name`` + ``client_phone``). Сервер сам переводит слот в
-        ``booked`` и валидирует пересечения.
+        (``client_name`` + ``client_phone``).
 
         Returns:
-            ``BookingRead`` в виде dict (с вложенным ``slot``).
+            ``BookingRead`` в виде dict.
         """
-        payload: dict[str, Any] = {"slot_id": slot_id}
+        payload: dict[str, Any] = {
+            "master_id": master_id,
+            "service_id": service_id,
+            "start_time": start_time,
+        }
         if client_id is not None:
             payload["client_id"] = client_id
         if client_name:

@@ -57,9 +57,9 @@ TOOLS: dict[str, dict[str, Any]] = {
             "function": {
                 "name": "get_availability",
                 "description": (
-                    "Получить реальные свободные слоты мастера по услуге на дату/период. "
+                    "Получить реальные свободные слоты по услуге на дату/период. "
                     "Вызывай после get_services, когда известны услуга и дата. "
-                    "НЕ выдумывай время и slot_id — бери только из ответа этого инструмента. "
+                    "НЕ выдумывай время и мастера — бери только из ответа этого инструмента. "
                     "Если свободного времени нет, предложи ближайшие варианты из ответа."
                 ),
                 "parameters": {
@@ -103,18 +103,30 @@ TOOLS: dict[str, dict[str, Any]] = {
             "function": {
                 "name": "create_booking",
                 "description": (
-                    "Создать бронь на конкретный слот. "
+                    "Создать бронь на конкретное время. "
                     "Вызывай ТОЛЬКО после того, как пользователь подтвердил "
-                    "услугу, время и мастера, и только с slot_id из get_availability. "
-                    "Для нескольких услуг вызывай инструмент несколько раз — по одному слоту на услугу."
+                    "услугу, время и мастера. master_id, service_id и start_time "
+                    "бери из выбранного слота ответа get_availability. "
+                    "Для нескольких услуг вызывай инструмент несколько раз."
                 ),
                 "parameters": {
                     "type": "object",
                     "properties": {
-                        "slot_id": {
+                        "master_id": {
                             "type": "integer",
                             "description": (
-                                "ID слота из ответа get_availability. "
+                                "user_id мастера из выбранного слота get_availability."
+                            ),
+                        },
+                        "service_id": {
+                            "type": "integer",
+                            "description": "ID услуги из get_services.",
+                        },
+                        "start_time": {
+                            "type": "string",
+                            "description": (
+                                "Время начала из выбранного слота get_availability "
+                                "(ISO 8601, например 2026-11-24T09:00:00+03:00). "
                                 "Не придумывай значение."
                             ),
                         },
@@ -149,7 +161,13 @@ TOOLS: dict[str, dict[str, Any]] = {
                             "additionalProperties": True,
                         },
                     },
-                    "required": ["slot_id", "client_name", "client_phone"],
+                    "required": [
+                        "master_id",
+                        "service_id",
+                        "start_time",
+                        "client_name",
+                        "client_phone",
+                    ],
                     "additionalProperties": False,
                 },
             },

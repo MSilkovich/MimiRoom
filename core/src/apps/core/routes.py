@@ -41,6 +41,11 @@ def get_apps_router() -> APIRouter:
     router.include_router(user_link_router)
     router.include_router(user_router)
     router.include_router(user_router_service)
-    router.include_router(staff_router)
 
     return router
+
+
+def get_staff_router() -> APIRouter:
+    """Роутер staff без версионного префикса."""
+    from .routers import staff_router
+    return staff_router

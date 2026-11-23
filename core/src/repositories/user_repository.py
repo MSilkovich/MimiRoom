@@ -77,4 +77,23 @@ class UserRepository(SqlAlchemyRepository[User]):
         )
         return set(rows.scalars().all())
 
+    async def get_masters_by_service(self, service_id: int) -> list[User]:
+        """Мастера (role=groomer), которые оказывают услугу."""
+        stmt = (
+            select(User)
+            .join(
+                MasterServiceLink,
+                MasterServiceLink.master_id == User.user_id,
+            )
+            .where(
+                MasterServiceLink.service_id == service_id,
+                MasterServiceLink.is_deleted.is_(False),
+                User.role == Role.GROOMER,
+                User.is_deleted.is_(False),
+            )
+            .order_by(User.user_id)
+        )
+        rows = await self.session.execute(stmt)
+        return list(rows.scalars().unique().all())
+
     # endregion

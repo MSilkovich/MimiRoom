@@ -47,9 +47,10 @@ async def get_availability(
 ) -> dict[str, Any]:
     """Вернуть реальные свободные слоты под услугу на период.
 
-    Если ``master_id`` не задан, опрашиваются все мастера, оказывающие услугу
-    (по данным каталога услуг), а слоты объединяются и сортируются по времени.
-    LLM обязан выбирать ``slot_id`` только из ответа этого инструмента.
+    Слоты рассчитываются на сервере (график мастера + длительность/буферы
+    услуги + существующие брони). Если ``master_id`` не задан — конкретного
+    мастера подбирает backend. LLM обязан выбирать время для брони только из
+    ответа этого инструмента.
 
     Args:
         user_id: ID пользователя.
@@ -70,43 +71,34 @@ async def get_availability(
     if service is None:
         raise ValueError(f"Услуга {service_id} не найдена")
 
-    all_masters = list(service.get("masters") or [])
-
-    if master_id is not None:
-        matched = [
-            master for master in all_masters
-            if master.get("user_id") == master_id
-        ]
-        # Если в каталоге услуги нет списка мастеров — всё равно пробуем
-        # запросить доступность по явно указанному master_id.
-        targets = matched or [{"user_id": master_id, "name": None}]
-    else:
-        targets = all_masters
-
-    if not targets:
-        raise ValueError("Для этой услуги не назначено ни одного мастера")
-
     date_to = date_to or date_from
+    items = await backend_repository.get_availability(
+        service_id=service_id,
+        date_from=date_from,
+        date_to=date_to,
+        master_id=master_id,
+    )
+
+    masters_by_id = {
+        master.get("user_id"): master
+        for master in (service.get("masters") or [])
+    }
+
     slots: list[dict[str, Any]] = []
-    for target in targets:
-        target_id = target.get("user_id")
-        items = await backend_repository.get_availability(
-            master_id=target_id,
-            service_id=service_id,
-            date_from=date_from,
-            date_to=date_to,
-            only_available=True,
+    for slot in items or []:
+        slot_master_id = slot.get("master_id")
+        master = masters_by_id.get(slot_master_id) or {
+            "user_id": slot_master_id
+        }
+        slots.append(
+            {
+                "master_id": slot_master_id,
+                "master_name": _master_name(master),
+                "service_id": slot.get("service_id", service_id),
+                "start_time": slot.get("start_time"),
+                "end_time": slot.get("end_time"),
+            }
         )
-        for slot in items or []:
-            slots.append(
-                {
-                    "slot_id": slot.get("slot_id"),
-                    "master_id": target_id,
-                    "master_name": _master_name(target),
-                    "start_time": slot.get("start_time"),
-                    "end_time": slot.get("end_time"),
-                }
-            )
 
     slots.sort(key=lambda item: item.get("start_time") or "")
 
@@ -125,7 +117,9 @@ async def get_availability(
 
 async def create_booking(
     user_id: int,
-    slot_id: int,
+    master_id: int,
+    service_id: int,
+    start_time: str,
     client_name: str | None = None,
     client_phone: str | None = None,
     client_id: int | None = None,
@@ -134,11 +128,13 @@ async def create_booking(
     options: dict[str, Any] | None = None,
     **_: Any,
 ) -> dict[str, Any]:
-    """Создать бронь на конкретный слот.
+    """Создать бронь на конкретное время.
 
     Args:
         user_id: ID пользователя. 0 — анонимный гость.
-        slot_id: id слота из get_availability.
+        master_id: user_id мастера из выбранного слота get_availability.
+        service_id: id услуги.
+        start_time: конкретное время начала из get_availability (ISO 8601).
         client_name: имя клиента (для гостя обязательно).
         client_phone: телефон клиента (для гостя обязателен).
         client_id: id авторизованного клиента (если известен).
@@ -150,8 +146,9 @@ async def create_booking(
         BookingRead — созданная бронь.
     """
     logger.info(
-        "Tool create_booking called: slot_id=%s client=%s user_id=%s",
-        slot_id, client_name or client_id, user_id,
+        "Tool create_booking called: master_id=%s service_id=%s start=%s "
+        "client=%s user_id=%s",
+        master_id, service_id, start_time, client_name or client_id, user_id,
     )
 
     # Авторизованного пользователя связываем с бронью (если не передан явно).
@@ -159,7 +156,9 @@ async def create_booking(
         client_id = user_id
 
     result = await backend_repository.create_booking(
-        slot_id=slot_id,
+        master_id=master_id,
+        service_id=service_id,
+        start_time=start_time,
         client_name=client_name,
         client_phone=client_phone,
         client_id=client_id,

@@ -28,7 +28,6 @@ iniconfig==2.3.1
 Mako==1.4.3
 MarkupSafe==3.0.4
 minio==7.2.15
-multidict==2.1.0
 packaging==26.3
 pamqp==3.3.0
 passlib==1.7.4

@@ -3,7 +3,7 @@ import logging
 from fastapi import FastAPI
 
 from config.project_config import settings_app
-from src.apps.core.routes import get_apps_router
+from src.apps.core.routes import get_apps_router, get_staff_router
 from src.excpetions.hadlers import register_exception_handlers
 from src.middleware.auth import AuthMiddleware
 from src.middleware.error import ErrorMiddleware
@@ -77,19 +77,21 @@ Access-токен передаётся в заголовке `Authorization: Bea
             },
             {
                 "name": "work-schedules",
-                "description": "График работы мастеров по дням недели — основа генерации слотов.",
+                "description": "График работы мастеров по дням недели — основа расчёта слотов.",
             },
             {
                 "name": "slots",
-                "description": "Слоты: генерация по графику и длительности услуги, доступность.",
+                "description": "Расчётные слоты: доступное время по графику, услуге и броням; "
+                "административный интервал сетки.",
             },
             {
                 "name": "bookings",
-                "description": "Бронирования слотов: создание (слот -> booked), отмена (-> free).",
+                "description": "Бронирования: запись на конкретное время, отмена.",
             },
         ],
     )
 
+    application.include_router(get_staff_router())
     application.include_router(get_apps_router())
 
     # добавляется первым = внутренний слой

@@ -1,12 +1,13 @@
+from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import (
+    DateTime,
     Enum as SAEnum,
     ForeignKey,
     Index,
     String,
     Text,
-    text,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -17,33 +18,30 @@ from .enums.booking_status import BookingStatus
 if TYPE_CHECKING:
     from .pet import Pet
     from .service import Service
-    from .slot import Slot
     from .user import User
 
 
 class Booking(Base):
-    """Бронирование слота.
+    """Бронирование — факт записи клиента на конкретное время.
+
+    Слоты больше не материализуются в БД: бронь хранит конкретные
+    ``start_time``/``end_time`` (снимок времени услуги), а возможные слоты для
+    новых записей рассчитываются на лету из графика мастера, длительности
+    услуги (с буферами) и активных броней (см. ``SlotService.list_available``).
 
     Мастер — ``master_id`` (FK ``user`` с ролью ``groomer``). Клиент может
     быть авторизованным (``client_id``) либо гостем (контакт в
     ``client_name``/``client_phone``). Питомец — ``pet_id``. ``options`` —
     произвольные доп. данные (в т.ч. сырой payload интеграции).
 
-    Защита от двойного бронирования:
-    - частичный уникальный индекс ``uq_bookings_active_slot`` по ``slot_id``
-      для всех статусов, кроме ``cancelled``;
-    - дополнительно сервисный слой берёт advisory-lock по мастеру и
-      ``SELECT ... FOR UPDATE`` по строке слота (см. ``BookingService.create``).
+    Защита от двойного бронирования: сервисный слой берёт advisory-lock по
+    мастеру и в этой же транзакции проверяет пересечение интервалов
+    (с учётом буферов услуг) перед вставкой.
     """
 
     __tablename__ = "bookings"
 
     booking_id: Mapped[int] = mapped_column(primary_key=True)
-    slot_id: Mapped[int] = mapped_column(
-        ForeignKey("slots.slot_id", ondelete="RESTRICT"),
-        nullable=False,
-        index=True,
-    )
     service_id: Mapped[int] = mapped_column(
         ForeignKey("service.service_id", ondelete="RESTRICT"),
         nullable=False,
@@ -53,6 +51,15 @@ class Booking(Base):
         ForeignKey("user.user_id", ondelete="RESTRICT"),
         nullable=False,
         index=True,
+    )
+
+    # Конкретное время записи (интервал самой услуги; буферы учитываются
+    # отдельно при расчёте доступности и проверке пересечений).
+    start_time: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+    end_time: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
     )
 
     # участники
@@ -81,9 +88,6 @@ class Booking(Base):
     comment: Mapped[str | None] = mapped_column(Text, nullable=True)
     options: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
 
-    slot: Mapped["Slot"] = relationship(
-        "Slot", back_populates="bookings", lazy="selectin"
-    )
     service: Mapped["Service"] = relationship("Service", lazy="selectin")
     master: Mapped["User"] = relationship(
         "User",
@@ -102,12 +106,6 @@ class Booking(Base):
     )
 
     __table_args__ = (
-        # один слот — не более одного активного (не отменённого) бронирования
-        Index(
-            "uq_bookings_active_slot",
-            "slot_id",
-            unique=True,
-            postgresql_where=text("status <> 'CANCELLED'"),
-        ),
+        Index("ix_bookings_master_start", "master_id", "start_time"),
         Index("ix_bookings_master_status", "master_id", "status"),
     )

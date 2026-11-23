@@ -4,49 +4,54 @@ from pydantic import Field
 
 from .base_schema import Base
 
-from src.models.enums.slot_status import SlotStatus
-
 
 class SlotRead(Base):
-    slot_id: int
+    """Расчётный слот (не хранится в БД).
+
+    Возможное время для новой записи: ``start_time``/``end_time`` интервала
+    услуги и конкретный ``master_id``, к которому относится слот.
+    """
+
     master_id: int
     service_id: int
     start_time: datetime
     end_time: datetime
-    status: SlotStatus
-    # Заполняется в выдаче доступности: свободен ли слот с учётом пересечений.
-    available: bool | None = None
+    available: bool = True
 
     model_config = Base.model_config | {
         "json_schema_extra": {
             "example": {
-                "slot_id": 1,
                 "master_id": 1,
                 "service_id": 3,
                 "start_time": "2026-11-24T09:00:00+03:00",
                 "end_time": "2026-11-24T10:00:00+03:00",
-                "status": "free",
                 "available": True,
             },
         },
     }
 
 
-class SlotGenerateRequest(Base):
-    master_id: int = Field(..., examples=[1])
+class SlotsAvailableRequest(Base):
+    """Запрос расчёта свободных слотов (параметры — в теле, не в query)."""
+
     service_id: int = Field(..., examples=[3])
-    date_from: date = Field(..., examples=["2026-11-24"])
-    date_to: date = Field(..., examples=["2026-11-30"])
-    step_minutes: int | None = Field(
+    master_id: int | None = Field(
         default=None,
-        ge=1,
-        description=(
-            "Шаг сетки в минутах. По умолчанию — длительность услуги с буферами."
-        ),
-        examples=[None, 30],
+        description="Если не задан — мастера подбирает сервер",
+        examples=[1, None],
+    )
+    date_from: date = Field(..., examples=["2026-11-24"])
+    date_to: date | None = Field(default=None, examples=["2026-11-30"])
+    pet_id: int | None = Field(
+        default=None,
+        description="Питомец (задел под расчёт длительности/цены)",
+        examples=[4],
     )
 
 
-class SlotGenerateResponse(Base):
-    created: int
-    slots: list[SlotRead] = Field(default_factory=list)
+class SlotIntervalUpdate(Base):
+    interval_minutes: int = Field(..., ge=1, le=1440, examples=[30])
+
+
+class SlotIntervalRead(Base):
+    interval_minutes: int = Field(..., examples=[30])

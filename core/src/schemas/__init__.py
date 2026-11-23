@@ -30,7 +30,12 @@ from .work_schedule import (
     WorkScheduleCreate,
     WorkScheduleUpdate,
 )
-from .slot import SlotRead, SlotGenerateRequest, SlotGenerateResponse
+from .slot import (
+    SlotRead,
+    SlotsAvailableRequest,
+    SlotIntervalUpdate,
+    SlotIntervalRead,
+)
 from .booking import BookingRead, BookingCreate, BookingUpdate
 from .user_summary import Summary, UserSummary, PetSummary
 
@@ -69,8 +74,9 @@ __all__ = [
     "WorkScheduleCreate",
     "WorkScheduleUpdate",
     "SlotRead",
-    "SlotGenerateRequest",
-    "SlotGenerateResponse",
+    "SlotsAvailableRequest",
+    "SlotIntervalUpdate",
+    "SlotIntervalRead",
     "BookingRead",
     "BookingCreate",
     "BookingUpdate",

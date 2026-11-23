@@ -13,7 +13,7 @@ from ..models import (
     RefreshToken,
     UserLink,
     WorkSchedule,
-    Slot,
+    BookingSettings,
     Booking,
 )
 from .measure_unit_repository import MeasureUnitRepository
@@ -27,7 +27,7 @@ from .service_consumable_repository import ServiceConsumableRepository
 from .tokens_repository import RefreshTokenRepository
 from .user_link_repository import UserLinkRepository
 from .work_schedule_repository import WorkScheduleRepository
-from .slot_repository import SlotRepository
+from .booking_settings_repository import BookingSettingsRepository
 from .booking_repository import BookingRepository
 
 
@@ -57,7 +57,7 @@ class SqlAlchemyUnitOfWork(UnitOfWork):
         self.refresh_tokens = RefreshTokenRepository(self.session)
         self.user_links = UserLinkRepository(self.session)
         self.work_schedules = WorkScheduleRepository(self.session)
-        self.slots = SlotRepository(self.session)
+        self.booking_settings = BookingSettingsRepository(self.session)
         self.bookings = BookingRepository(self.session)
 
         self._repositories = {
@@ -72,7 +72,7 @@ class SqlAlchemyUnitOfWork(UnitOfWork):
             UserLink: self.user_links,
             RefreshToken: self.refresh_tokens,
             WorkSchedule: self.work_schedules,
-            Slot: self.slots,
+            BookingSettings: self.booking_settings,
             Booking: self.bookings,
         }
         return self

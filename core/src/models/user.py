@@ -15,7 +15,6 @@ if TYPE_CHECKING:
     from .pet import Pet
     from .refresh_token import RefreshToken
     from .service import Service
-    from .slot import Slot
     from .work_schedule import WorkSchedule
     from src.schemas.user import UserLink
 
@@ -60,11 +59,6 @@ class User(Base):
     )
     work_schedules: Mapped[list["WorkSchedule"]] = relationship(
         "WorkSchedule",
-        back_populates="master",
-        lazy="select",
-    )
-    slots: Mapped[list["Slot"]] = relationship(
-        "Slot",
         back_populates="master",
         lazy="select",
     )

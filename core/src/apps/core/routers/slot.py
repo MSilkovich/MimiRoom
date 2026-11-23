@@ -1,106 +1,73 @@
-"""Слоты: генерация сетки и доступность.
+"""Слоты — расчёт доступного времени и административный интервал.
+
+Слоты **не хранятся** в БД: они рассчитываются на лету из графика мастера,
+длительности/буферов услуги и активных броней.
 
 Путь: /slots*
-- GET  /slots                    — список слотов (с фильтрами)
-- GET  /slots/availability       — доступные слоты на период (генерация + пересчёт)
-- POST /slots/generate           — явно сгенерировать сетку на период
-- GET  /slots/{id}               — один слот
+- POST /slots/available   — свободные слоты под услугу/мастера/период (тело);
+- GET  /slots/interval    — текущий шаг сетки слотов;
+- POST /slots/interval    — задать шаг сетки (администратор).
 """
-
-from datetime import date
 
 from fastapi import APIRouter, Depends
 
-from src.excpetions.crud import NotFoundError
-from src.models.enums.slot_status import SlotStatus
+from src.excpetions.auth import PermissionDeniedError
+from src.permissions.enums.roles import Role
 from src.services import SlotService
 from src import dependencies as deps
 from src.schemas import (
-    SlotGenerateRequest,
-    SlotGenerateResponse,
+    SlotIntervalRead,
+    SlotIntervalUpdate,
     SlotRead,
+    SlotsAvailableRequest,
 )
 from src.middleware.mix_scheme import get_principal
+from src.middleware.principal import Principal
 
-# Read/write слотов доступны и пользователю, и сервисному токену
-# (будущая интеграция: Яндекс/бот). get_principal принимает оба типа токена.
+# Чтение доступности — и пользователю, и сервисному токену (бот/интеграция).
 router = APIRouter(prefix="/slots", tags=["slots"], dependencies=[
     Depends(get_principal),
 ])
 
 
-@router.get("", response_model=list[SlotRead])
-async def slot_list(
-    master_id: int | None = None,
-    service_id: int | None = None,
-    date_from: date | None = None,
-    date_to: date | None = None,
-    status: SlotStatus | None = None,
-    limit: int = 100,
-    offset: int = 0,
+def _require_admin(principal: Principal) -> None:
+    """Настройки сетки меняет только администратор/менеджер."""
+    if (
+        not principal.is_user
+        or principal.user is None
+        or principal.user.role not in (Role.ADMIN, Role.MANAGER)
+    ):
+        raise PermissionDeniedError("Менять интервал слотов может администратор")
+
+
+@router.post("/available", response_model=list[SlotRead])
+async def slots_available(
+    data: SlotsAvailableRequest,
     service: SlotService = Depends(deps.get_service(SlotService)),
 ):
-    """Вернуть сохранённые слоты с фильтрами."""
-    return await service.get_multi(
-        master_id=master_id,
-        service_id=service_id,
-        date_from=date_from,
-        date_to=date_to,
-        status=status,
-        limit=limit,
-        offset=offset,
-    )
+    """Рассчитать свободные слоты.
 
-
-@router.get("/availability", response_model=list[SlotRead])
-async def slot_availability(
-    master_id: int,
-    service_id: int,
-    date_from: date,
-    date_to: date,
-    step_minutes: int | None = None,
-    only_available: bool = False,
-    limit: int = 500,
-    offset: int = 0,
-    service: SlotService = Depends(deps.get_service(SlotService)),
-):
-    """Доступность мастера по услуге на период.
-
-    Слоты генерируются по графику (идемпотентно), затем статусы пересчитываются
-    по активным бронированиям. ``available=true`` — слот можно бронировать.
+    Параметры передаются в теле запроса (не в query). Если ``master_id`` не
+    задан — мастера подбирает сервер (см. ``select_master_for_day``).
     """
-    return await service.list_availability(
-        master_id=master_id,
-        service_id=service_id,
-        date_from=date_from,
-        date_to=date_to,
-        step_minutes=step_minutes,
-        only_available=only_available,
-        limit=limit,
-        offset=offset,
-    )
+    return await service.list_available(data)
 
 
-@router.post("/generate", response_model=SlotGenerateResponse)
-async def slot_generate(
-    data: SlotGenerateRequest,
+@router.get("/interval", response_model=SlotIntervalRead)
+async def slot_interval_get(
     service: SlotService = Depends(deps.get_service(SlotService)),
 ):
-    """Сгенерировать сетку слотов на период."""
-    created, slots = await service.generate(data)
-    return SlotGenerateResponse(
-        created=created,
-        slots=[SlotRead.model_validate(slot) for slot in slots],
-    )
+    """Вернуть текущий шаг сетки слотов (минуты)."""
+    return SlotIntervalRead(interval_minutes=await service.get_interval())
 
 
-@router.get("/{pk}", response_model=SlotRead)
-async def slot_read(
-    pk: int,
+@router.post("/interval", response_model=SlotIntervalRead)
+async def slot_interval_set(
+    data: SlotIntervalUpdate,
     service: SlotService = Depends(deps.get_service(SlotService)),
+    principal: Principal = Depends(get_principal),
 ):
-    """Вернуть слот по id."""
-    item = await service.get(pk)
-    if item is None:
-        raise NotFoundError("Слот не найден")
-    return item
+    """Задать шаг сетки слотов (например, 30 минут). Только администратор."""
+    _require_admin(principal)
+    value = await service.set_interval(data.interval_minutes)
+    return SlotIntervalRead(interval_minutes=value)

@@ -12,7 +12,7 @@ from .refresh_token import RefreshToken
 from .token_type import TokenType
 from .user_link import UserLink
 from .work_schedule import WorkSchedule
-from .slot import Slot
+from .booking_settings import BookingSettings
 from .booking import Booking
 
 __all__ = [
@@ -30,6 +30,6 @@ __all__ = [
     "TokenType",
     "UserLink",
     "WorkSchedule",
-    "Slot",
+    "BookingSettings",
     "Booking",
 ]

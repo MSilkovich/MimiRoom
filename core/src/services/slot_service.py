@@ -1,280 +1,233 @@
+"""Расчёт доступных слотов и административный интервал сетки.
+
+Ключевая идея: **слоты не хранятся в БД**. Возможные слоты для новой записи
+вычисляются на лету из:
+- графика мастера (``work_schedules``),
+- длительности и буферов услуги (``service``),
+- административного шага сетки (``booking_settings.slot_interval_minutes``),
+- уже существующих активных броней (их footprint'ов с буферами).
+
+Если клиент не указал мастера, конкретного мастера выбирает функция
+``select_master_for_day`` (см. ``master_selector.py``) — её легко заменить.
+"""
+
 from datetime import date, datetime, time, timedelta
 
 from src.excpetions.crud import NotFoundError, ValidationError
 from src.models.booking import Booking
-from src.models.enums.slot_status import SlotStatus
+from src.models.booking_settings import BookingSettings
 from src.models.service import Service
-from src.models.slot import Slot
 from src.models.user import User
 from src.models.work_schedule import WorkSchedule
 from src.permissions.enums.roles import Role
-from src.schemas import SlotGenerateRequest, SlotRead
-from .base import BaseService
+from src.schemas import SlotRead, SlotsAvailableRequest
+from .master_selector import MasterDayAvailability, select_master_for_day
 from .slot_generator import (
-    generate_slot_times,
+    compute_available_slots,
     get_default_tz,
-    intervals_overlap,
     iter_days,
     minutes_from_duration,
     slot_footprint,
 )
 
 
-def _normalize_dt(value: datetime, tz) -> datetime:
-    """Привести datetime к aware-виду в ``tz`` с точностью до секунды.
-
-    Нужно для устойчивого сравнения «уже сгенерированных» start_time: разные
-    драйверы могут вернуть naive (SQLite) или aware в другой зоне (Postgres).
-    """
+def _ensure_aware(value: datetime, tz) -> datetime:
+    """Привести datetime к aware-виду в ``tz``."""
     if value.tzinfo is None:
-        value = value.replace(tzinfo=tz)
-    return value.astimezone(tz).replace(microsecond=0)
+        return value.replace(tzinfo=tz)
+    return value.astimezone(tz)
 
 
-async def recalculate_slot_statuses(
-    uow, master_id: int, day_start: datetime, day_end: datetime
-) -> None:
-    """Пересчитать статусы слотов мастера за окно ``[day_start, day_end)``.
-
-    Статус слота выводится из активных броней:
-    - слот, на который есть активная бронь -> ``booked``;
-    - слот, чей интервал с буферами пересекается с активной бронью -> ``blocked``;
-    - иначе -> ``free``.
-
-    Так один и тот же пересчёт закрывает и освобождение слота при отмене, и
-    блокировку соседних слотов из-за буферов.
-    """
-    slot_repo = uow.repository(Slot)
-    booking_repo = uow.repository(Booking)
-    service_repo = uow.repository(Service)
-
-    slots = await slot_repo.list_range(master_id, day_start, day_end)
-    if not slots:
-        return
-
-    services = await service_repo.get_many_by_ids(
-        {slot.service_id for slot in slots}
-    )
-    service_map = {service.service_id: service for service in services}
-
-    active_bookings = await booking_repo.get_active_for_master(
-        master_id, day_start, day_end
-    )
-    booked_slot_ids = {booking.slot_id for booking in active_bookings}
-
-    booked_footprints = []
-    for booking in active_bookings:
-        if booking.slot is None:
-            continue
-        service = service_map.get(booking.service_id) or booking.service
-        if service is None:
-            continue
-        booked_footprints.append(
-            slot_footprint(
-                booking.slot.start_time,
-                booking.slot.end_time,
-                service.buffer_before_minutes,
-                service.buffer_after_minutes,
-            )
-        )
-
-    for slot in slots:
-        if slot.slot_id in booked_slot_ids:
-            new_status = SlotStatus.BOOKED
-        else:
-            service = service_map.get(slot.service_id)
-            footprint = (
-                slot_footprint(
-                    slot.start_time,
-                    slot.end_time,
-                    service.buffer_before_minutes,
-                    service.buffer_after_minutes,
-                )
-                if service is not None
-                else (slot.start_time, slot.end_time)
-            )
-            overlaps = any(
-                intervals_overlap(footprint, booked_footprint)
-                for booked_footprint in booked_footprints
-            )
-            new_status = SlotStatus.BLOCKED if overlaps else SlotStatus.FREE
-
-        if slot.status != new_status:
-            await slot_repo.update(
-                {"status": new_status}, slot_id=slot.slot_id
-            )
+def _local_date(value: datetime, tz) -> date:
+    """Дата брони в локальной таймзоне."""
+    return _ensure_aware(value, tz).date()
 
 
-class SlotService(BaseService[Slot, SlotRead, SlotRead]):
-    model = Slot
+class SlotService:
+    """Сервис расчёта слотов и настроек интервала."""
 
-    async def generate(
-        self, data: SlotGenerateRequest
-    ) -> tuple[int, list[Slot]]:
-        """Идемпотентно сгенерировать слоты по графику мастера и услуге."""
-        if data.date_to < data.date_from:
+    def __init__(self, uow_factory) -> None:
+        self.uow_factory = uow_factory
+
+    # region интервал сетки (административная настройка)
+
+    async def get_interval(self) -> int:
+        """Вернуть текущий шаг сетки слотов (минуты)."""
+        async with self.uow_factory() as uow:
+            repo = uow.repository(BookingSettings)
+            return await repo.get_interval()
+
+    async def set_interval(self, interval_minutes: int) -> int:
+        """Задать шаг сетки слотов (только администратор — проверка в роутере)."""
+        if interval_minutes <= 0:
+            raise ValidationError("Интервал слотов должен быть > 0")
+        async with self.uow_factory() as uow:
+            repo = uow.repository(BookingSettings)
+            value = await repo.set_interval(interval_minutes)
+            await uow.commit()
+            return value
+
+    # endregion
+
+    # region расчёт доступности
+
+    async def list_available(
+        self, data: SlotsAvailableRequest
+    ) -> list[SlotRead]:
+        """Рассчитать свободные слоты под услугу на период.
+
+        ``master_id`` опционален: если не задан — подбираем мастера на каждый
+        день через ``select_master_for_day`` и возвращаем его слоты.
+        """
+        date_to = data.date_to or data.date_from
+        if date_to < data.date_from:
             raise ValidationError("date_to не может быть раньше date_from")
 
+        tz = get_default_tz()
+
         async with self.uow_factory() as uow:
-            user_repo = uow.repository(User)
             service_repo = uow.repository(Service)
+            user_repo = uow.repository(User)
             schedule_repo = uow.repository(WorkSchedule)
-            slot_repo = uow.repository(Slot)
+            booking_repo = uow.repository(Booking)
+            settings_repo = uow.repository(BookingSettings)
 
-            master = await user_repo.get_single(user_id=data.master_id)
-            if master is None:
-                raise NotFoundError("Мастер не найден")
-            if master.role != Role.GROOMER:
-                raise ValidationError("Пользователь не является мастером")
-
-            service = await service_repo.get_single(service_id=data.service_id)
+            service = await service_repo.get_single(
+                service_id=data.service_id
+            )
             if service is None:
                 raise NotFoundError("Услуга не найдена")
-
-            offered_service_ids = await user_repo.get_master_service_ids(
-                data.master_id
-            )
-            if data.service_id not in offered_service_ids:
-                raise ValidationError("Мастер не оказывает выбранную услугу")
 
             duration = minutes_from_duration(service.duration)
             if duration is None or duration <= 0:
                 raise ValidationError("У услуги не задана длительность")
 
-            schedules = await schedule_repo.get_for_master(data.master_id)
-            by_weekday = {
-                schedule.weekday: schedule
-                for schedule in schedules
-                if not schedule.is_deleted
-            }
+            interval = await settings_repo.get_interval()
 
-            tz = get_default_tz()
-            created = 0
-            created_slots: list[Slot] = []
+            masters = await self._resolve_masters(
+                user_repo,
+                service,
+                data.master_id,
+            )
 
-            for day in iter_days(data.date_from, data.date_to):
-                schedule = by_weekday.get(day.weekday())
-                if schedule is None or schedule.is_day_off:
-                    continue
+            scheduler = {}
+            busy: dict[int, list] = {}
+            counts: dict[int, dict] = {}
 
-                day_start = datetime.combine(day, time.min, tzinfo=tz)
-                day_end = datetime.combine(
-                    day + timedelta(days=1), time.min, tzinfo=tz
-                )
-
-                existing = await slot_repo.existing_start_times(
-                    data.master_id, data.service_id, day_start, day_end
-                )
-                existing_normalized = {
-                    _normalize_dt(value, tz) for value in existing
+            for master in masters:
+                rows = await schedule_repo.get_for_master(master.user_id)
+                scheduler[master.user_id] = {
+                    row.weekday: row for row in rows if not row.is_deleted
                 }
-                candidates = generate_slot_times(
-                    day=day,
-                    start_time=schedule.start_time,
-                    end_time=schedule.end_time,
-                    duration_minutes=duration,
-                    buffer_before_minutes=service.buffer_before_minutes,
-                    buffer_after_minutes=service.buffer_after_minutes,
-                    step_minutes=data.step_minutes,
-                    tz=tz,
+
+            range_start = datetime.combine(
+                data.date_from, time.min, tzinfo=tz
+            )
+            range_end = datetime.combine(
+                date_to + timedelta(days=1), time.min, tzinfo=tz
+            )
+            # Расширяем окно на сутки, чтобы поймать брони с буферами,
+            # «залезающие» в окно из соседних дней.
+            fetch_start = range_start - timedelta(days=1)
+            fetch_end = range_end + timedelta(days=1)
+
+            for master in masters:
+                bookings = await booking_repo.get_active_for_master(
+                    master.user_id, fetch_start, fetch_end
                 )
+                footprints = []
+                day_counts: dict[date, int] = {}
+                for booking in bookings:
+                    booking_service = booking.service
+                    if booking_service is None:
+                        continue
+                    footprints.append(
+                        slot_footprint(
+                            _ensure_aware(booking.start_time, tz),
+                            _ensure_aware(booking.end_time, tz),
+                            booking_service.buffer_before_minutes,
+                            booking_service.buffer_after_minutes,
+                        )
+                    )
+                    day = _local_date(booking.start_time, tz)
+                    day_counts[day] = day_counts.get(day, 0) + 1
+                busy[master.user_id] = footprints
+                counts[master.user_id] = day_counts
 
-                items = [
-                    {
-                        "master_id": data.master_id,
-                        "service_id": data.service_id,
-                        "start_time": start,
-                        "end_time": end,
-                        "status": SlotStatus.FREE,
-                    }
-                    for start, end in candidates
-                    if _normalize_dt(start, tz) not in existing_normalized
-                ]
-                if not items:
-                    continue
+            result: list[SlotRead] = []
+            for day in iter_days(data.date_from, date_to):
+                options: list[MasterDayAvailability] = []
+                free_by_master: dict[int, list] = {}
+                for master in masters:
+                    schedule = scheduler[master.user_id].get(day.weekday())
+                    if schedule is None or schedule.is_day_off:
+                        free_slots = []
+                    else:
+                        free_slots = compute_available_slots(
+                            day=day,
+                            start_time=schedule.start_time,
+                            end_time=schedule.end_time,
+                            duration_minutes=duration,
+                            buffer_before_minutes=service.buffer_before_minutes,
+                            buffer_after_minutes=service.buffer_after_minutes,
+                            step_minutes=interval,
+                            busy_footprints=busy[master.user_id],
+                            tz=tz,
+                        )
+                    free_by_master[master.user_id] = free_slots
+                    options.append(
+                        MasterDayAvailability(
+                            master_id=master.user_id,
+                            free_slots=free_slots,
+                            bookings_that_day=counts[master.user_id].get(
+                                day, 0
+                            ),
+                        )
+                    )
 
-                instances = await slot_repo.create_many(items)
-                created += len(instances)
-                created_slots.extend(instances)
+                if data.master_id is not None:
+                    chosen_masters = [masters[0].user_id]
+                else:
+                    chosen = select_master_for_day(options)
+                    chosen_masters = [chosen] if chosen is not None else []
 
-            await uow.commit()
-            return created, created_slots
+                for master_id in chosen_masters:
+                    for start, end in free_by_master[master_id]:
+                        result.append(
+                            SlotRead(
+                                master_id=master_id,
+                                service_id=service.service_id,
+                                start_time=start,
+                                end_time=end,
+                                available=True,
+                            )
+                        )
 
-    async def list_availability(
+            return result
+
+    async def _resolve_masters(
         self,
-        master_id: int,
-        service_id: int,
-        date_from: date,
-        date_to: date,
-        step_minutes: int | None = None,
-        only_available: bool = False,
-        limit: int = 500,
-        offset: int = 0,
-    ) -> list[Slot]:
-        """Вернуть слоты с признаком доступности (пересчитанным по броням)."""
-        await self.generate(
-            SlotGenerateRequest(
-                master_id=master_id,
-                service_id=service_id,
-                date_from=date_from,
-                date_to=date_to,
-                step_minutes=step_minutes,
+        user_repo,
+        service: Service,
+        master_id: int | None,
+    ) -> list[User]:
+        """Список мастеров для расчёта: явный или все, кто оказывает услугу."""
+        if master_id is not None:
+            master = await user_repo.get_single(user_id=master_id)
+            if master is None:
+                raise NotFoundError("Мастер не найден")
+            if master.role != Role.GROOMER:
+                raise ValidationError("Пользователь не является мастером")
+            offered = await user_repo.get_master_service_ids(master.user_id)
+            if service.service_id not in offered:
+                raise ValidationError("Мастер не оказывает выбранную услугу")
+            return [master]
+
+        masters = await user_repo.get_masters_by_service(service.service_id)
+        if not masters:
+            raise ValidationError(
+                "Для этой услуги не назначено ни одного мастера"
             )
-        )
+        return masters
 
-        tz = get_default_tz()
-        start = datetime.combine(date_from, time.min, tzinfo=tz)
-        end = datetime.combine(date_to + timedelta(days=1), time.min, tzinfo=tz)
-
-        async with self.uow_factory() as uow:
-            await recalculate_slot_statuses(uow, master_id, start, end)
-            await uow.commit()
-
-        async with self.uow_factory() as uow:
-            slot_repo = uow.repository(Slot)
-            slots = await slot_repo.list_range(
-                master_id, start, end, service_id=service_id
-            )
-
-        for slot in slots:
-            slot.available = slot.status == SlotStatus.FREE
-
-        if only_available:
-            slots = [slot for slot in slots if slot.available]
-
-        return slots[offset: offset + limit]
-
-    async def get_multi(
-        self,
-        order: str | None = None,
-        limit: int = 100,
-        offset: int = 0,
-        rule=None,
-        master_id: int | None = None,
-        service_id: int | None = None,
-        date_from: date | None = None,
-        date_to: date | None = None,
-        status: SlotStatus | None = None,
-    ) -> list[Slot]:
-        tz = get_default_tz()
-        start = (
-            datetime.combine(date_from, time.min, tzinfo=tz)
-            if date_from is not None
-            else None
-        )
-        end = (
-            datetime.combine(date_to + timedelta(days=1), time.min, tzinfo=tz)
-            if date_to is not None
-            else None
-        )
-        async with self.uow_factory() as uow:
-            repo = uow.repository(Slot)
-            return await repo.list_filtered(
-                master_id=master_id,
-                service_id=service_id,
-                start=start,
-                end=end,
-                status=status,
-                limit=limit,
-                offset=offset,
-            )
+    # endregion

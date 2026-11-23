@@ -1,11 +1,11 @@
-"""Бронирования (Booking) — новая модель записи.
+"""Бронирования (Booking) — запись на конкретное время.
 
 Путь: /bookings*
 - GET    /bookings              — список (фильтры: master_id, client_id, status)
 - GET    /bookings/{id}         — одно бронирование
-- POST   /bookings              — создать (переводит слот в booked)
+- POST   /bookings              — создать на конкретное время
 - PUT    /bookings/{id}         — обновить
-- POST   /bookings/{id}/cancel  — отменить (возвращает слот в free)
+- POST   /bookings/{id}/cancel  — отменить
 - DELETE /bookings/{id}         — удалить
 """
 
@@ -61,11 +61,11 @@ async def booking_create(
     service: BookingService = Depends(deps.get_service(BookingService)),
     principal: Principal = Depends(get_principal),
 ):
-    """Создать бронирование.
+    """Создать бронирование на конкретное время.
 
-    Слот переводится в ``booked``; при пересечении интервалов (с учётом
-    буферов) соседние слоты помечаются ``blocked``. Конкурентные запросы на
-    один слот защищены блокировкой и уникальным индексом.
+    Сервер валидирует график мастера, сетку слотов и пересечения интервалов
+    (с учётом буферов услуг). Конкурентные запросы на пересекающееся время
+    защищены advisory-lock по мастеру.
     """
     return await service.create(data)
 
@@ -90,7 +90,7 @@ async def booking_cancel(
     service: BookingService = Depends(deps.get_service(BookingService)),
     principal: Principal = Depends(get_principal),
 ):
-    """Отменить бронирование — слот снова станет свободным."""
+    """Отменить бронирование — время снова станет доступным."""
     return await service.cancel(pk)
 
 
