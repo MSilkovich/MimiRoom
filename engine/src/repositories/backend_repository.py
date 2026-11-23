@@ -49,6 +49,38 @@ class BackendRepository(BaseRepository):
                 return service
         return None
 
+    async def get_masters(
+        self, limit: int = 100, offset: int = 0
+    ) -> list[dict[str, Any]]:
+        """Вернуть список мастеров (с их услугами) через сервисный доступ."""
+        return await self._request(
+            "GET",
+            f"{API_PREFIX}/s/masters",
+            params={"limit": limit, "offset": offset},
+        )
+
+    async def get_bookings(
+        self,
+        client_id: int | None = None,
+        master_id: int | None = None,
+        status: str | None = None,
+        limit: int = 100,
+        offset: int = 0,
+    ) -> list[dict[str, Any]]:
+        """Вернуть бронирования (фильтры: client_id, master_id, status)."""
+        params: dict[str, Any] = {"limit": limit, "offset": offset}
+        if client_id is not None:
+            params["client_id"] = client_id
+        if master_id is not None:
+            params["master_id"] = master_id
+        if status is not None:
+            params["status"] = status
+        return await self._request(
+            "GET",
+            f"{API_PREFIX}/bookings",
+            params=params,
+        )
+
     async def get_availability(
         self,
         service_id: int,

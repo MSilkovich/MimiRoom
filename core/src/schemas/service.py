@@ -19,6 +19,7 @@ class ServiceRead(Base):
     buffer_before_minutes: int
     buffer_after_minutes: int
     breed_id: int | None
+    breed_title: str | None = None
     masters: list[MasterBriefRead] = Field(default_factory=list)
     consumables: list[ServiceConsumableRead] = Field(default_factory=list)
 

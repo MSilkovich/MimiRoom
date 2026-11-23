@@ -189,11 +189,16 @@ Adapter ──[bot:tasks]──> Engine ──[LLM]──> Engine ──[bot:res
 - Реестр `TOOLS` в `registry.py` — словарь, где ключ — имя инструмента, значение — `{"schema": ..., "handler": ...}`.
 - `schema` — JSON Schema для OpenAI function calling.
 - `handler` — асинхронная функция, реализованная в `handlers/`.
-- **Текущие инструменты**:
-  1. `get_services` — GET `/api/v0.0.1/s/services` — каталог услуг (цена, длительность, мастера).
-  2. `get_availability` — POST `/api/v0.0.1/slots/available` — свободные (расчётные) слоты по услуге и дате (`service_id`, `date_from`, опц. `date_to`, `master_id`); параметры в теле.
-  3. `create_booking` — POST `/api/v0.0.1/bookings` — создание брони по `master_id` + `service_id` + `start_time` (из выбранного слота) + `client_name`, `client_phone`, опц. `comment`.
-- **Цепочка записи**: `get_services` → `get_availability` → выбор слота (мастер + время) → `create_booking`. `master_id`, `service_id` и `start_time` берутся только из ответа `get_availability`.
+- **Текущие инструменты** (6):
+  1. `get_services` — каталог услуг (компактные карточки: id, цена, длительность, мастера).
+  2. `find_service` — нечёткий поиск услуги с опечатками; при 0 совпадений `fallback` (общая услуга).
+  3. `get_masters` — мастера и их услуги (фильтр по услуге).
+  4. `get_availability` — POST `/api/v0.0.1/slots/available` — свободные слоты по услуге/мастеру/дате.
+  5. `create_booking` — POST `/api/v0.0.1/bookings` — бронь по `master` + `service` + `start_time`.
+  6. `get_my_appointments` — GET `/api/v0.0.1/bookings` — записи клиента.
+- Ссылки на услугу/мастера передаются как `id` ИЛИ название и разрешаются в `src/tools/resolvers.py` (детерминированно, без угадывания; при неоднозначности — `ambiguous`).
+- `src/tools/catalog.py` — каталог услуг/мастеров как компактный документ с TTL-кешем; подставляется в контекст модели system-сообщением.
+- **Цепочка записи**: `get_services`/`find_service` → `get_availability` → выбор слота (мастер + время) → `create_booking`.
 - **Цепочка вызова**: LLM → registry.get_handler() → handlers.xxx() → repositories.BookingRepository → BaseRepository._request() → HTTP → Backend API.
 - Handlers не делают HTTP-запросы напрямую. За HTTP отвечают репозитории.
 - `get_tool_schemas()` — возвращает список схем для передачи в LLM API.
@@ -203,7 +208,7 @@ Adapter ──[bot:tasks]──> Engine ──[LLM]──> Engine ──[bot:res
 ### Repositories (Репозитории)
 
 - `BaseRepository` — базовый класс с методом `_request(method, path, json, params)`, который ходит в backend API с `Authorization: Bearer <service-token>`.
-- `BackendRepository` (`backend_repository.py`) — предметные методы: `get_services`, `get_service`, `get_availability`, `create_booking`, `get_user_summary`.
+- `BackendRepository` (`backend_repository.py`) — предметные методы: `get_services`, `get_service`, `get_masters`, `get_availability`, `create_booking`, `get_bookings`, `get_user_summary`.
 - Репозитории — единственное место, где делаются HTTP-запросы к backend.
 - `backend_repository` — singleton, создаётся на уровне модуля и переиспользуется всеми handlers.
 

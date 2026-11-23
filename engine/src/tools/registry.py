@@ -4,9 +4,8 @@
 - schema — OpenAI function-calling схема (name, description, parameters)
 - handler — асинхронная функция, реализованная в handlers/
 
-Добавление нового инструмента:
-1. Реализовать handler в src/tools/handlers/handlers.py
-2. Зарегистрировать его здесь в TOOLS
+Ссылки на услугу/мастера передаются как ``id`` (число) ИЛИ точное название
+(строка) — код разрешает их детерминированно (см. ``resolvers``).
 """
 
 from typing import Any, Awaitable, Callable
@@ -14,6 +13,11 @@ from typing import Any, Awaitable, Callable
 from .handlers import handlers
 
 ToolHandler = Callable[..., Awaitable[Any]]
+
+REF_DESCRIPTION = (
+    "Можно передать id (число) или точное название (строка). "
+    "Значения бери из каталога/ответов инструментов, не выдумывай."
+)
 
 
 TOOLS: dict[str, dict[str, Any]] = {
@@ -23,33 +27,76 @@ TOOLS: dict[str, dict[str, Any]] = {
             "function": {
                 "name": "get_services",
                 "description": (
-                    "Получить список услуг с ценами, длительностью и мастерами. "
-                    "Вызывай когда пользователь спрашивает 'что есть', "
-                    "'какие услуги', 'сколько стоит', "
-                    "или в начале диалога, чтобы предложить варианты."
+                    "Каталог услуг: id, название, цена, длительность, мастера. "
+                    "Вызывай в начале диалога и когда спрашивают про цену/наличие. "
+                    "Не выдумывай услуги и цены — только из ответа."
                 ),
                 "parameters": {
                     "type": "object",
                     "properties": {
-                        "limit": {
-                            "type": "integer",
-                            "description": (
-                                "Сколько услуг вернуть (максимум). "
-                                "По умолчанию 50 — обычно каталога хватает."
-                            ),
-                            "default": 50,
-                        },
-                        "offset": {
-                            "type": "integer",
-                            "description": "Смещение для пагинации. По умолчанию 0.",
-                            "default": 0,
-                        },
+                        "limit": {"type": "integer", "default": 50},
+                        "offset": {"type": "integer", "default": 0},
                     },
                     "required": [],
+                    "additionalProperties": False,
                 },
             },
         },
         "handler": handlers.get_services,
+    },
+    "find_service": {
+        "schema": {
+            "type": "function",
+            "function": {
+                "name": "find_service",
+                "description": (
+                    "Найти услугу по фразе пользователя с учётом опечаток "
+                    "(«стрыжка» → «Стрижка»). Возвращает подходящие услуги с id. "
+                    "Если ничего не найдено — вернёт fallback (общую услугу), "
+                    "которую можно предложить пользователю. "
+                    "Вызывай, когда название услуги неточное или пользователь спрашивает "
+                    "«что у вас есть»."
+                ),
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "query": {
+                            "type": "string",
+                            "description": "Фраза/название услуги от пользователя",
+                        },
+                        "limit": {"type": "integer", "default": 5},
+                    },
+                    "required": ["query"],
+                    "additionalProperties": False,
+                },
+            },
+        },
+        "handler": handlers.find_service,
+    },
+    "get_masters": {
+        "schema": {
+            "type": "function",
+            "function": {
+                "name": "get_masters",
+                "description": (
+                    "Список мастеров и их услуг. Можно отфильтровать по услуге. "
+                    "Вызывай, когда пользователь спрашивает про мастеров или хочет выбрать."
+                ),
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "service": {
+                            "type": ["integer", "string"],
+                            "description": f"Услуга (id или название). {REF_DESCRIPTION}",
+                        },
+                        "limit": {"type": "integer", "default": 100},
+                    },
+                    "required": [],
+                    "additionalProperties": False,
+                },
+            },
+        },
+        "handler": handlers.get_masters,
     },
     "get_availability": {
         "schema": {
@@ -57,40 +104,38 @@ TOOLS: dict[str, dict[str, Any]] = {
             "function": {
                 "name": "get_availability",
                 "description": (
-                    "Получить реальные свободные слоты по услуге на дату/период. "
-                    "Вызывай после get_services, когда известны услуга и дата. "
-                    "НЕ выдумывай время и мастера — бери только из ответа этого инструмента. "
-                    "Если свободного времени нет, предложи ближайшие варианты из ответа."
+                    "Свободные слоты под услугу (и при желании мастера) на дату/период. "
+                    "Вызывай после того, как известны услуга и дата. "
+                    "Не выдумывай время — бери только из ответа."
                 ),
                 "parameters": {
                     "type": "object",
                     "properties": {
-                        "service_id": {
-                            "type": "integer",
-                            "description": "ID услуги из get_services",
+                        "service": {
+                            "type": ["integer", "string"],
+                            "description": f"Услуга (id или название). {REF_DESCRIPTION}",
+                        },
+                        "master": {
+                            "type": ["integer", "string"],
+                            "description": (
+                                "Мастер (id или имя), если пользователь его выбрал. "
+                                "Иначе не передавай — подберём автоматически."
+                            ),
                         },
                         "date_from": {
                             "type": "string",
-                            "description": (
-                                "Дата начала в формате YYYY-MM-DD, например 2026-11-24"
-                            ),
+                            "description": "Дата начала YYYY-MM-DD",
                         },
                         "date_to": {
                             "type": "string",
                             "description": (
-                                "Дата окончания (включительно) в формате YYYY-MM-DD. "
-                                "Не указывай, если нужен один день."
+                                "Дата окончания (включительно) YYYY-MM-DD. "
+                                "Не указывай для одного дня."
                             ),
                         },
-                        "master_id": {
-                            "type": "integer",
-                            "description": (
-                                "user_id мастера, если пользователь явно выбрал мастера. "
-                                "Иначе не передавай — будут предложены все мастера услуги."
-                            ),
-                        },
+                        "limit": {"type": "integer", "default": 12},
                     },
-                    "required": ["service_id", "date_from"],
+                    "required": ["service", "date_from"],
                     "additionalProperties": False,
                 },
             },
@@ -103,76 +148,79 @@ TOOLS: dict[str, dict[str, Any]] = {
             "function": {
                 "name": "create_booking",
                 "description": (
-                    "Создать бронь на конкретное время. "
-                    "Вызывай ТОЛЬКО после того, как пользователь подтвердил "
-                    "услугу, время и мастера. master_id, service_id и start_time "
-                    "бери из выбранного слота ответа get_availability. "
-                    "Для нескольких услуг вызывай инструмент несколько раз."
+                    "Создать бронь на конкретное время. Вызывай ТОЛЬКО после "
+                    "подтверждения пользователем услуги, времени и мастера. "
+                    "service, master и start_time бери из выбранного слота get_availability/"
+                    "find_service. Для нескольких услуг вызывай несколько раз."
                 ),
                 "parameters": {
                     "type": "object",
                     "properties": {
-                        "master_id": {
-                            "type": "integer",
-                            "description": (
-                                "user_id мастера из выбранного слота get_availability."
-                            ),
+                        "service": {
+                            "type": ["integer", "string"],
+                            "description": f"Услуга (id или название). {REF_DESCRIPTION}",
                         },
-                        "service_id": {
-                            "type": "integer",
-                            "description": "ID услуги из get_services.",
+                        "master": {
+                            "type": ["integer", "string"],
+                            "description": f"Мастер (id или имя). {REF_DESCRIPTION}",
                         },
                         "start_time": {
                             "type": "string",
                             "description": (
-                                "Время начала из выбранного слота get_availability "
-                                "(ISO 8601, например 2026-11-24T09:00:00+03:00). "
-                                "Не придумывай значение."
+                                "Время начала из выбранного слота "
+                                "(ISO 8601, напр. 2026-11-24T16:00:00+03:00)."
                             ),
                         },
                         "client_name": {
                             "type": "string",
-                            "description": "Имя клиента для записи",
+                            "description": "Имя клиента (для гостя обязательно)",
                         },
                         "client_phone": {
                             "type": "string",
-                            "description": "Телефон клиента для связи",
+                            "description": "Телефон клиента (для гостя обязателен)",
                         },
                         "pet_id": {
                             "type": "integer",
-                            "description": (
-                                "ID питомца из сводки о пользователе, если "
-                                "пользователь назвал питомца и он есть в системе."
-                            ),
+                            "description": "id питомца из сводки, если назван и есть в системе",
                         },
                         "comment": {
                             "type": "string",
-                            "description": (
-                                "Комментарий к записи: кличка питомца (если нет pet_id), "
-                                "пожелания, «первый визит» и т.п."
-                            ),
+                            "description": "Комментарий: кличка (если нет pet_id), пожелания и т.п.",
                         },
                         "options": {
                             "type": "object",
-                            "description": (
-                                "Дополнительные данные клиента, которых нет в других полях: "
-                                "пожелания, источник и т.п. Формат {\"ключ\": \"значение\"}."
-                            ),
+                            "description": "Доп. данные, формат {\"ключ\": \"значение\"}",
                             "additionalProperties": True,
                         },
                     },
-                    "required": [
-                        "master_id",
-                        "service_id",
-                        "start_time",
-                        "client_name",
-                        "client_phone",
-                    ],
+                    "required": ["service", "master", "start_time"],
                     "additionalProperties": False,
                 },
             },
         },
         "handler": handlers.create_booking,
+    },
+    "get_my_appointments": {
+        "schema": {
+            "type": "function",
+            "function": {
+                "name": "get_my_appointments",
+                "description": (
+                    "Записи текущего клиента (ближайшие активные). Вызывай, когда "
+                    "спрашивают «когда я записан», «мои записи», чтобы не дублировать."
+                ),
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "include_past": {"type": "boolean", "default": False},
+                        "limit": {"type": "integer", "default": 10},
+                    },
+                    "required": [],
+                    "additionalProperties": False,
+                },
+            },
+        },
+        "handler": handlers.get_my_appointments,
     },
 }
 

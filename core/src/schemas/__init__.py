@@ -37,7 +37,7 @@ from .slot import (
     SlotIntervalRead,
 )
 from .booking import BookingRead, BookingCreate, BookingUpdate
-from .user_summary import Summary, UserSummary, PetSummary
+from .user_summary import Summary, UserSummary, PetSummary, AppointmentSummary
 
 __all__ = [
     "Base",
@@ -88,4 +88,5 @@ __all__ = [
     "Summary",
     "UserSummary",
     "PetSummary",
+    "AppointmentSummary",
 ]

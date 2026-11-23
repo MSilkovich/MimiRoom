@@ -40,6 +40,11 @@ class Service(Base):
             return None
         return int(self.duration.total_seconds() // 60)
 
+    @property
+    def breed_title(self) -> str | None:
+        """Название породы/размерной категории услуги (для каталога)."""
+        return self.breed.title if self.breed is not None else None
+
     masters: Mapped[list["User"]] = relationship(
         "User",
         secondary="master_services",

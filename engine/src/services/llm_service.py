@@ -2,6 +2,7 @@
 
 import json
 import logging
+import os
 from datetime import datetime, timedelta, timezone
 from typing import Any
 from zoneinfo import ZoneInfo
@@ -17,12 +18,15 @@ from src.exceptions import LLMError
 from src.memory.base import MemoryStore
 from src.memory.redis_memory import RedisMemoryStore
 from src.tools.registry import get_handler, get_tool_schemas
+from src.tools import catalog as catalog_mod
 from src.repositories import backend_repository
 from config.llm import settings_llm
 
 logger = get_logger(__name__)
 
 MAX_ITERATIONS = 6  # защита от бесконечного цикла tool_calls
+# Сколько последних сообщений истории отдавать модели (защита от распухания).
+MAX_HISTORY_MESSAGES = int(os.getenv("MAX_HISTORY_MESSAGES", "20"))
 # Новая цепочка записи требует минимум 3 шага LLM:
 # get_services -> get_availability -> create_booking (+ уточнения), поэтому
 # лимит поднят с 3 до 6.
@@ -55,6 +59,7 @@ class LLMService:
         self._client = client
         self._memory = memory
         self._system_prompt = load_prompt("system.md")
+        self._salon_prompt = load_prompt("salon.md")
         self._tools = get_tool_schemas()
 
     # region static
@@ -108,9 +113,16 @@ class LLMService:
             {"role": Role.SYSTEM, "content": self._system_prompt},
             {"role": Role.SYSTEM, "content": render_summary(task.summary) if task.summary else EMPTY_SUMMARY},
             {"role": Role.SYSTEM, "content": _now_context()},
-            *history,
-            {"role": Role.USER, "content": task.text},
         ]
+
+        catalog_block = await self._build_catalog_block()
+        if catalog_block:
+            messages.append({"role": Role.SYSTEM, "content": catalog_block})
+        if self._salon_prompt.strip():
+            messages.append({"role": Role.SYSTEM, "content": self._salon_prompt})
+
+        messages.extend(history[-MAX_HISTORY_MESSAGES:])
+        messages.append({"role": Role.USER, "content": task.text})
 
         # сохраняем входящее сообщение 
         await self._memory.append(
@@ -144,6 +156,15 @@ class LLMService:
                 "role": Role.ASSISTANT, "content": final_text}
         )
         return final_text
+
+    async def _build_catalog_block(self) -> str | None:
+        """Собрать документ каталога для system-сообщения (или None при сбое)."""
+        try:
+            catalog = await catalog_mod.get_catalog()
+            return catalog_mod.render_catalog_block(catalog)
+        except Exception:  # noqa: BLE001 — каталог не должен ломать диалог
+            logger.exception("Failed to build catalog block")
+            return None
 
     async def _execute_tool(self, call, user_id: int) -> ToolResult:
         if not call.is_valid:
