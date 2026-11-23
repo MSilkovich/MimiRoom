@@ -92,14 +92,16 @@ def _build_bot() -> Bot:
     api = TEST if settings_telegram.TEST_SERVER is True else PRODUCTION
     return Bot(
         token=token,
-        session=AiohttpSession(api=api),
+        session=AiohttpSession(api=api,
+                               proxe=None),
         default=DefaultBotProperties(parse_mode="HTML"),
     )
 
 
 async def main() -> None:
     setup_logging()
-    logger.info("Starting %s v%s", settings_app.PROJECT_NAME, settings_app.VERSION)
+    logger.info("Starting %s v%s", settings_app.PROJECT_NAME,
+                settings_app.VERSION)
 
     bot = _build_bot()
 
@@ -116,7 +118,8 @@ async def main() -> None:
     if settings_telegram.WEBHOOKS:
         app = web.Application(
             middlewares=[
-                cast(Middleware, ip_filter_middleware(IPFilter(DEFAULT_TELEGRAM_NETWORKS))),
+                cast(Middleware, ip_filter_middleware(
+                    IPFilter(DEFAULT_TELEGRAM_NETWORKS))),
             ],
         )
 
