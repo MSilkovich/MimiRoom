@@ -2,7 +2,7 @@ from datetime import timedelta
 from decimal import Decimal
 from typing import TYPE_CHECKING
 
-from sqlalchemy import ForeignKey, Interval, Numeric, String
+from sqlalchemy import ForeignKey, Interval, Numeric, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .base_model import Base
@@ -18,6 +18,7 @@ class Service(Base):
 
     service_id: Mapped[int] = mapped_column(primary_key=True)
     title: Mapped[str] = mapped_column(String(255), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
     duration: Mapped[timedelta | None] = mapped_column(Interval)
     price: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
     # Буферы вокруг услуги: время на подготовку/уборку. Участвуют в расчёте

@@ -50,4 +50,7 @@ user (мастер, role=groomer) ── master_services ── service (duratio
 
 ## Статусы
 
-- `booking`: `pending` → `confirmed` → `cancelled`. Активны (`pending`/`confirmed`) — учитываются при расчёте слотов и защите от пересечений.
+- `booking`: `pending` → `confirmed` → `completed`; в любой момент до завершения — `cancelled`.
+  Активны (`pending`/`confirmed`) — учитываются при расчёте слотов и защите от пересечений.
+  `completed` сохраняется в истории визитов питомца и продолжает занимать свой интервал;
+  `cancelled` — единственный статус, при котором время снова доступно для новых броней.

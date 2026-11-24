@@ -12,7 +12,7 @@ from .user_link import (
     LinkCodeResponse,
     LinkCodeConsumeRequest,
 )
-from .pet import PetRead, PetCreate, PetUpdate
+from .pet import PetRead, PetCreate, PetUpdate, PetHistoryRead
 from .service_consumable import (
     ServiceConsumableRead,
     ServiceConsumableCreate,
@@ -62,6 +62,7 @@ __all__ = [
     "PetRead",
     "PetCreate",
     "PetUpdate",
+    "PetHistoryRead",
     "ServiceConsumableRead",
     "ServiceConsumableCreate",
     "ServiceConsumableUpdate",

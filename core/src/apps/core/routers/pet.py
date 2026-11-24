@@ -3,6 +3,7 @@
 Путь: /pets*
 - GET    /pets              — список
 - GET    /pets/{id}         — один элемент
+- GET    /pets/{id}/history — история посещений питомца
 - POST   /pets              — создать
 - PUT    /pets/{id}         — обновить
 - DELETE /pets/{id}         — удалить
@@ -11,9 +12,10 @@
 from fastapi import APIRouter, Depends, Security
 
 from src.excpetions.crud import NotFoundError
+from src.models.enums.booking_status import BookingStatus
 from src.services import PetService
 from src import dependencies as deps
-from src.schemas import PetCreate, PetRead, PetUpdate
+from src.schemas import PetCreate, PetHistoryRead, PetRead, PetUpdate
 from src.middleware.auth import get_current_user, auth_bearer_scheme
 
 
@@ -38,6 +40,20 @@ async def pet_read(pk: int, servive: PetService = Depends(deps.get_service(PetSe
     if item is None:
         raise NotFoundError("Питомец не найден")
     return item
+
+
+@router.get("/{pk}/history", response_model=list[PetHistoryRead])
+async def pet_history(
+    pk: int,
+    status: BookingStatus | None = None,
+    limit: int = 100,
+    offset: int = 0,
+    service: PetService = Depends(deps.get_service(PetService)),
+):
+    """Вернуть историю посещений питомца (все брони, новые сверху)."""
+    return await service.get_history(
+        pk, status=status, limit=limit, offset=offset
+    )
 
 
 @router.post("", response_model=PetRead, status_code=201)

@@ -1,4 +1,4 @@
-from datetime import datetime, time, timedelta
+from datetime import date, datetime, time, timedelta
 
 from src.excpetions.crud import ConflictError, NotFoundError, ValidationError
 from src.models.booking import Booking
@@ -221,9 +221,30 @@ class BookingService(BaseService[Booking, BookingCreate, BookingUpdate]):
                 raise NotFoundError("Бронирование не найдено")
             if booking.status == BookingStatus.CANCELLED:
                 return booking
+            if booking.status == BookingStatus.COMPLETED:
+                raise ValidationError("Завершённую запись нельзя отменить")
 
             await booking_repo.update(
                 {"status": BookingStatus.CANCELLED}, booking_id=booking_id
+            )
+            await uow.commit()
+            return await booking_repo.get_single(booking_id=booking_id)
+
+    async def complete(self, booking_id: int) -> Booking:
+        """Отметить визит выполненным (идемпотентно)."""
+        async with self.uow_factory() as uow:
+            booking_repo = uow.repository(Booking)
+
+            booking = await booking_repo.get_single(booking_id=booking_id)
+            if booking is None:
+                raise NotFoundError("Бронирование не найдено")
+            if booking.status == BookingStatus.CANCELLED:
+                raise ValidationError("Отменённую запись нельзя завершить")
+            if booking.status == BookingStatus.COMPLETED:
+                return booking
+
+            await booking_repo.update(
+                {"status": BookingStatus.COMPLETED}, booking_id=booking_id
             )
             await uow.commit()
             return await booking_repo.get_single(booking_id=booking_id)
@@ -266,6 +287,8 @@ class BookingService(BaseService[Booking, BookingCreate, BookingUpdate]):
         master_id: int | None = None,
         client_id: int | None = None,
         status: BookingStatus | None = None,
+        date_from: date | None = None,
+        date_to: date | None = None,
     ) -> list[Booking]:
         filters: dict = {}
         if master_id is not None:
@@ -276,6 +299,29 @@ class BookingService(BaseService[Booking, BookingCreate, BookingUpdate]):
             filters["status"] = status
         async with self.uow_factory() as uow:
             repo = uow.repository(Booking)
-            return await repo.get_multi(
-                order=order, limit=limit, offset=offset, **filters
+            if date_from is None and date_to is None:
+                return await repo.get_multi(
+                    order=order, limit=limit, offset=offset, **filters
+                )
+
+            if date_from is not None and date_to is not None and date_to < date_from:
+                raise ValidationError("date_to не может быть раньше date_from")
+            tz = get_default_tz()
+            start_from = (
+                datetime.combine(date_from, time.min, tzinfo=tz)
+                if date_from is not None
+                else None
+            )
+            start_to = (
+                datetime.combine(date_to + timedelta(days=1), time.min, tzinfo=tz)
+                if date_to is not None
+                else None
+            )
+            return await repo.get_multi_by_period(
+                order=order,
+                limit=limit,
+                offset=offset,
+                start_from=start_from,
+                start_to=start_to,
+                **filters,
             )

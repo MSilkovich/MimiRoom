@@ -1,13 +1,16 @@
 """Бронирования (Booking) — запись на конкретное время.
 
 Путь: /bookings*
-- GET    /bookings              — список (фильтры: master_id, client_id, status)
+- GET    /bookings              — список (фильтры: master_id, client_id, status, date_from, date_to)
 - GET    /bookings/{id}         — одно бронирование
 - POST   /bookings              — создать на конкретное время
 - PUT    /bookings/{id}         — обновить
 - POST   /bookings/{id}/cancel  — отменить
+- POST   /bookings/{id}/complete — отметить выполненным
 - DELETE /bookings/{id}         — удалить
 """
+
+from datetime import date
 
 from fastapi import APIRouter, Depends
 
@@ -27,18 +30,26 @@ async def booking_list(
     master_id: int | None = None,
     client_id: int | None = None,
     status: BookingStatus | None = None,
+    date_from: date | None = None,
+    date_to: date | None = None,
     limit: int = 100,
     offset: int = 0,
     service: BookingService = Depends(deps.get_service(BookingService)),
     principal: Principal = Depends(get_principal),
 ):
-    """Вернуть список бронирований."""
+    """Вернуть список бронирований.
+
+    ``date_from``/``date_to`` — включительный диапазон дат по ``start_time``
+    (в таймзоне салона). Оба параметра необязательны.
+    """
     return await service.get_multi(
         limit=limit,
         offset=offset,
         master_id=master_id,
         client_id=client_id,
         status=status,
+        date_from=date_from,
+        date_to=date_to,
     )
 
 
@@ -92,6 +103,16 @@ async def booking_cancel(
 ):
     """Отменить бронирование — время снова станет доступным."""
     return await service.cancel(pk)
+
+
+@router.post("/{pk}/complete", response_model=BookingRead)
+async def booking_complete(
+    pk: int,
+    service: BookingService = Depends(deps.get_service(BookingService)),
+    principal: Principal = Depends(get_principal),
+):
+    """Отметить визит выполненным (статус ``completed``)."""
+    return await service.complete(pk)
 
 
 @router.delete("/{pk}", status_code=204)

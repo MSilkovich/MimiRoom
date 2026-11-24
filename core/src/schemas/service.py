@@ -14,6 +14,7 @@ from .service_consumable import (
 class ServiceRead(Base):
     service_id: int
     title: str
+    description: str | None = None
     duration: timedelta | None
     price: Decimal
     buffer_before_minutes: int
@@ -36,6 +37,7 @@ class ServiceRead(Base):
             "example": {
                 "service_id": 1,
                 "title": "Стрижка",
+                "description": "Стрижка с мытьём и сушкой",
                 "duration": "PT1H30M",
                 "duration_minutes": 90,
                 "price": "1500.00",
@@ -54,6 +56,7 @@ class ServiceRead(Base):
 
 class ServiceCreate(Base):
     title: str = Field(..., examples=["Стрижка"])
+    description: str | None = Field(default=None, examples=["Стрижка с мытьём и сушкой"])
     duration: timedelta | None = Field(
         default=None,
         description="Длительность в ISO 8601 (например, PT1H30M = 1ч30м, P3D = 3 дня)",
@@ -82,6 +85,7 @@ class ServiceCreate(Base):
 
 class ServiceUpdate(Base):
     title: str | None = Field(default=None, examples=["Стрижка"])
+    description: str | None = Field(default=None, examples=["Стрижка с мытьём и сушкой"])
     duration: timedelta | None = Field(
         default=None,
         description="Длительность в ISO 8601 (например, PT1H30M = 1ч30м, P3D = 3 дня)",
