@@ -14,6 +14,7 @@ from typing import Any
 
 from aiogram import Bot
 from aiogram.exceptions import TelegramAPIError
+from redis.exceptions import TimeoutError as RedisTimeoutError
 
 from config.core_config import settings_core
 from config.redis_config import settings_redis
@@ -113,13 +114,18 @@ async def run_response_consumer(bot: Bot) -> None:
         _STREAM, _GROUP, _CONSUMER,
     )
     while True:
-        results = await r.xreadgroup(
-            groupname=_GROUP,
-            consumername=_CONSUMER,
-            streams={_STREAM: ">"},
-            count=settings_redis.REDIS_READ_COUNT,
-            block=settings_redis.REDIS_BLOCK_MS,
-        )
+        try:
+            results = await r.xreadgroup(
+                groupname=_GROUP,
+                consumername=_CONSUMER,
+                streams={_STREAM: ">"},
+                count=settings_redis.REDIS_READ_COUNT,
+                block=settings_redis.REDIS_BLOCK_MS,
+            )
+        except RedisTimeoutError:
+            # Единичный таймаут чтения при простое — не повод ронять consumer.
+            logger.debug("Redis read timeout while idle, continuing")
+            continue
         if not results:
             continue
         for _stream, messages in results:

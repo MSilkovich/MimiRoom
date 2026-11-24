@@ -16,6 +16,7 @@ from aiogram.webhook.aiohttp_server import (
 from aiogram.webhook.security import DEFAULT_TELEGRAM_NETWORKS, IPFilter
 from aiohttp import web
 from aiohttp.typedefs import Middleware
+from aiogram.enums import ParseMode
 
 import errors
 import handlers
@@ -93,8 +94,8 @@ def _build_bot() -> Bot:
     return Bot(
         token=token,
         session=AiohttpSession(api=api,
-                               proxe=None),
-        default=DefaultBotProperties(parse_mode="HTML"),
+                               proxy=settings_telegram.PROXY_LINK),
+        default=DefaultBotProperties(parse_mode=ParseMode.MARKDOWN_V2),
     )
 
 
