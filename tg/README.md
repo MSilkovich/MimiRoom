@@ -40,7 +40,7 @@ tg/app/bot/
 │   ├── cmds/start.py      # /start + привязка
 │   └── messages/chat.py   # текстовые сообщения
 ├── middlewares/           # проверки чата/пользователя
-├── utils/                 # логирование, deep-link парсер, callback-data
+├── utils/                 # логирование, разбор кода /start, callback-data
 ├── errors/                # обработчик ошибок aiogram
 └── main.py                # точка входа
 ```
@@ -124,10 +124,9 @@ venv/Scripts/python app/bot/main.py
    код из Redis, создаёт `UserLink` и возвращает связку.
 5. Бот кэширует `external_id -> user_id` на 30 минут.
 
-Поддерживаемые форматы payload в боте:
-- `<code>` — одноразовый код (основной вариант, ≤64 символов);
-- `user_id:access_token` (legacy — привязка access-токеном напрямую);
-- base64url(JSON/query) — для совместимости.
+Payload `/start` — это **только** одноразовый код (алфавит `A-Z a-z 0-9`,
+≤64 символов). Других способов привязки бот не поддерживает: access-токены,
+base64/JSON/query-полезные нагрузки и прочие форматы отклоняются.
 
 > Код в БД не хранится: это временный секрет в Redis, одноразовый и с TTL.
 

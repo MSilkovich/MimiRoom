@@ -1,12 +1,13 @@
 """Команда /start, в т.ч. deep-link привязка Telegram к аккаунту в ЛК.
 
-Сценарий привязки:
+Единственный способ привязки — одноразовый код:
 1. Пользователь в ЛК жмёт «Привязать Telegram».
-2. ЛК выдаёт ссылку ``https://t.me/<bot>?start=<PAYLOAD>``.
-3. Пользователь открывает бота -> /start <PAYLOAD>.
-4. Бот разбирает payload, зовёт core ``POST /users/link`` и кэширует связку.
+2. ЛК выдаёт ссылку ``https://t.me/<bot>?start=<code>`` (код выпускает core).
+3. Пользователь открывает бота -> /start <code>.
+4. Бот обменивает код на связку: core ``POST /users/link/code/consume``.
+5. Бот кэширует связку ``external_id -> user_id``.
 
-Формат PAYLOAD и требования к core см. ``utils/deep_link.py`` и README.
+Разбор payload см. ``utils/deep_link.py`` и README.
 """
 
 from __future__ import annotations
@@ -17,8 +18,9 @@ from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, Message
 
 from services.core_client import CoreClient, CoreError
 from services.link_cache import remember_link, resolve_user_id
+from utils.escape_helper import escape_md_v2
 from utils.callback_datas import UniversalWindowCloseCB
-from utils.deep_link import LinkPayload, parse_start_payload
+from utils.deep_link import parse_start_code
 from utils.logging import get_logger
 
 router = Router()
@@ -60,74 +62,65 @@ async def _send_welcome(msg: Message) -> None:
             "Напишите вопрос — я помогу с услугами, записью и подскажу детали."
         )
 
-    await msg.answer(text, reply_markup=_close_keyboard(msg.from_user.id))
+    await msg.answer(escape_md_v2(text), reply_markup=_close_keyboard(msg.from_user.id))
 
 
 @router.message(CommandStart(deep_link=True))
 async def start_cmd_with_deep_link(msg: Message, command: CommandObject) -> None:
-    payload: LinkPayload = parse_start_payload(command.args)
+    code = parse_start_code(command.args)
     logger.info(
-        "User %s started bot with deeplink: %s", msg.from_user.id, payload.raw
+        "User %s started bot with deeplink: %r", msg.from_user.id, command.args
     )
-    await _handle_link(msg, payload)
+    await _handle_link(msg, code)
 
 
-async def _handle_link(msg: Message, payload: LinkPayload) -> None:
+async def _handle_link(msg: Message, code: str | None) -> None:
     external_id = str(msg.from_user.id)
 
-    if not payload.token:
-        logger.warning("Deep-link without token/code: %s", payload.raw)
-        await msg.answer(
+    if not code:
+        logger.warning("Deep-link without valid code: %r", code)
+        await msg.answer(escape_md_v2(
             "⚠️ Не удалось прочитать ссылку привязки.\n"
             "Откройте личный кабинет и нажмите «Привязать Telegram» ещё раз."
-        )
+        ))
         return
 
     try:
-        if payload.user_id is not None:
-            # Совместимость: старый формат user_id:access_token.
-            await _client.create_link(
-                user_id=payload.user_id,
-                external_id=external_id,
-                service_token=payload.token,
-            )
-            linked_user_id = payload.user_id
-        else:
-            # Основной формат: одноразовый короткий код из ЛК.
-            link = await _client.consume_link_code(
-                code=payload.token,
-                external_id=external_id,
-            )
-            if not link or link.get("user_id") is None:
-                raise CoreError("Empty response from link code consume")
-            linked_user_id = int(link["user_id"])
+        # Единственный формат привязки: одноразовый короткий код из ЛК.
+        link = await _client.consume_link_code(
+            code=code,
+            external_id=external_id,
+        )
+        if not link or link.get("user_id") is None:
+            raise CoreError("Empty response from link code consume")
+        linked_user_id = int(link["user_id"])
     except CoreError as exc:
         logger.warning("Link failed for external_id=%s: %s", external_id, exc)
         if exc.status == 409:
-            await msg.answer(
+            await msg.answer(escape_md_v2(
                 "ℹ️ Этот Telegram уже привязан к другому аккаунту. "
                 "Если это ошибка — обратитесь в поддержку."
-            )
+            ))
         elif exc.status in (400, 404, 422):
-            await msg.answer(
+            await msg.answer(escape_md_v2(
                 "⚠️ Ссылка привязки недействительна или истекла.\n"
                 "Сформируйте новую ссылку в личном кабинете."
-            )
+            ))
         else:
-            await msg.answer(
+            await msg.answer(escape_md_v2(
                 "😔 Не удалось привязать аккаунт. Попробуйте позже "
                 "или обратитесь в поддержку."
-            )
+            ))
         return
 
     await remember_link(linked_user_id, external_id)
     logger.info(
         "Telegram linked: external_id=%s -> user_id=%s", external_id, linked_user_id
     )
-    await msg.answer(
+    await msg.answer(escape_md_v2(
         f"✅ Готово! Telegram привязан к аккаунту #{linked_user_id}.\n"
         "Теперь напишите вопрос — я на связи."
-    )
+    ))
 
 
 @router.message(CommandStart(deep_link=False))
