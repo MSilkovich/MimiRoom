@@ -1,7 +1,10 @@
+from src.excpetions.auth import PermissionDeniedError
 from src.excpetions.crud import ConflictError, ValidationError
 from src.models.service import Service
 from src.models.user import User
 from src.permissions.enums.roles import Role
+from src.permissions.enums.scope import Scope
+from src.permissions.permission_rule import PermissionRule
 from src.schemas import MasterCreate, MasterUpdate
 from .auth_service import AuthService
 from .base import BaseService
@@ -67,12 +70,26 @@ class MasterService(BaseService[User, MasterCreate, MasterUpdate]):
             reloaded = await user_repo.get_single(user_id=user_id)
             return reloaded or user
 
-    async def update(self, pk: int, data: MasterUpdate) -> User | None:  # type: ignore[override]
+    async def update(
+        self,
+        pk: int,
+        data: MasterUpdate,
+        rule: PermissionRule | None = None,
+    ) -> User | None:  # type: ignore[override]
+        if (
+            rule is not None
+            and rule.scope == Scope.OWN
+            and data.service_ids is not None
+        ):
+            raise PermissionDeniedError(
+                "Набор услуг мастера меняет администратор/менеджер"
+            )
+
         async with self.uow_factory() as uow:
             user_repo = uow.repository(User)
             service_repo = uow.repository(Service)
 
-            user = await user_repo.get_single(user_id=pk)
+            user = await user_repo.get_single(rule=rule, user_id=pk)
             if user is None:
                 return None
 
@@ -84,7 +101,7 @@ class MasterService(BaseService[User, MasterCreate, MasterUpdate]):
                     payload["password"]
                 )
             if payload:
-                await user_repo.update(payload, user_id=pk)
+                await user_repo.update(payload, rule=rule, user_id=pk)
 
             if data.service_ids is not None:
                 await self._ensure_services_exist(
@@ -96,4 +113,4 @@ class MasterService(BaseService[User, MasterCreate, MasterUpdate]):
 
             await uow.commit()
             uow.session.expire_all()
-            return await user_repo.get_single(user_id=pk)
+            return await user_repo.get_single(rule=rule, user_id=pk)

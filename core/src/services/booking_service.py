@@ -1,5 +1,6 @@
 from datetime import date, datetime, time, timedelta
 
+from src.excpetions.auth import PermissionDeniedError
 from src.excpetions.crud import ConflictError, NotFoundError, ValidationError
 from src.models.booking import Booking
 from src.models.booking_settings import BookingSettings
@@ -9,6 +10,8 @@ from src.models.service import Service
 from src.models.user import User
 from src.models.work_schedule import WorkSchedule
 from src.permissions.enums.roles import Role
+from src.permissions.enums.scope import Scope
+from src.permissions.permission_rule import PermissionRule
 from src.schemas import BookingCreate, BookingUpdate
 from .base import BaseService
 from .slot_generator import (
@@ -41,7 +44,9 @@ class BookingService(BaseService[Booking, BookingCreate, BookingUpdate]):
         full_name = f"{user.name} {user.surname}".strip()
         return full_name or user.login, user.phone
 
-    async def create(self, data: BookingCreate) -> Booking:
+    async def create(
+        self, data: BookingCreate, rule: PermissionRule | None = None
+    ) -> Booking:
         """Создать бронь на конкретное время.
 
         Транзакция:
@@ -49,9 +54,26 @@ class BookingService(BaseService[Booking, BookingCreate, BookingUpdate]):
         2. `advisory-lock` по мастеру — сериализует конкурентные запросы;
         3. проверка пересечений (с учётом буферов) с активными бронями;
         4. вставка брони с конкретными ``start_time``/``end_time``.
+
+        Для OWN-правила клиент может создать бронь только себе
+        (``client_id`` принудительно = текущий пользователь), грумер — только
+        на себя как мастера.
         """
         tz = get_default_tz()
         start_time = _ensure_aware(data.start_time, tz)
+
+        if rule is not None and rule.scope == Scope.OWN:
+            if rule.owner_field == "client_id":
+                if data.client_id is not None and data.client_id != rule.owner_id:
+                    raise PermissionDeniedError(
+                        "Клиент может записываться только на себя"
+                    )
+                data = data.model_copy(update={"client_id": rule.owner_id})
+            elif rule.owner_field == "master_id":
+                if data.master_id != rule.owner_id:
+                    raise PermissionDeniedError(
+                        "Мастер может создавать записи только на себя"
+                    )
 
         async with self.uow_factory() as uow:
             booking_repo = uow.repository(Booking)
@@ -211,12 +233,16 @@ class BookingService(BaseService[Booking, BookingCreate, BookingUpdate]):
                 f"{interval} мин)"
             )
 
-    async def cancel(self, booking_id: int) -> Booking:
+    async def cancel(
+        self, booking_id: int, rule: PermissionRule | None = None
+    ) -> Booking:
         """Отменить бронь (идемпотентно)."""
         async with self.uow_factory() as uow:
             booking_repo = uow.repository(Booking)
 
-            booking = await booking_repo.get_single(booking_id=booking_id)
+            booking = await booking_repo.get_single(
+                rule=rule, booking_id=booking_id
+            )
             if booking is None:
                 raise NotFoundError("Бронирование не найдено")
             if booking.status == BookingStatus.CANCELLED:
@@ -225,17 +251,36 @@ class BookingService(BaseService[Booking, BookingCreate, BookingUpdate]):
                 raise ValidationError("Завершённую запись нельзя отменить")
 
             await booking_repo.update(
-                {"status": BookingStatus.CANCELLED}, booking_id=booking_id
+                {"status": BookingStatus.CANCELLED},
+                rule=rule,
+                booking_id=booking_id,
             )
             await uow.commit()
-            return await booking_repo.get_single(booking_id=booking_id)
+            return await booking_repo.get_single(
+                rule=rule, booking_id=booking_id
+            )
 
-    async def complete(self, booking_id: int) -> Booking:
-        """Отметить визит выполненным (идемпотентно)."""
+    async def complete(
+        self, booking_id: int, rule: PermissionRule | None = None
+    ) -> Booking:
+        """Отметить визит выполненным (идемпотентно).
+
+        Завершать визит может мастер (OWN по ``master_id``) либо
+        администратор/менеджер (ALL). Клиент — нет.
+        """
+        if (
+            rule is not None
+            and rule.scope == Scope.OWN
+            and rule.owner_field != "master_id"
+        ):
+            raise PermissionDeniedError("Завершать визит может только мастер")
+
         async with self.uow_factory() as uow:
             booking_repo = uow.repository(Booking)
 
-            booking = await booking_repo.get_single(booking_id=booking_id)
+            booking = await booking_repo.get_single(
+                rule=rule, booking_id=booking_id
+            )
             if booking is None:
                 raise NotFoundError("Бронирование не найдено")
             if booking.status == BookingStatus.CANCELLED:
@@ -244,38 +289,75 @@ class BookingService(BaseService[Booking, BookingCreate, BookingUpdate]):
                 return booking
 
             await booking_repo.update(
-                {"status": BookingStatus.COMPLETED}, booking_id=booking_id
+                {"status": BookingStatus.COMPLETED},
+                rule=rule,
+                booking_id=booking_id,
             )
             await uow.commit()
-            return await booking_repo.get_single(booking_id=booking_id)
+            return await booking_repo.get_single(
+                rule=rule, booking_id=booking_id
+            )
 
     async def update(
-        self, pk: int, data: BookingUpdate
+        self,
+        pk: int,
+        data: BookingUpdate,
+        rule: PermissionRule | None = None,
     ) -> Booking | None:
+        payload = data.model_dump(exclude_unset=True)
+        if rule is not None and rule.scope == Scope.OWN:
+            # OWN-пользователь не может «переписать» принадлежность брони.
+            payload.pop("client_id", None)
+            new_status = payload.get("status")
+            if new_status is not None:
+                if (
+                    rule.owner_field == "client_id"
+                    and new_status != BookingStatus.CANCELLED
+                ):
+                    raise PermissionDeniedError(
+                        "Клиент может только отменить свою запись"
+                    )
+                if (
+                    rule.owner_field == "master_id"
+                    and new_status != BookingStatus.COMPLETED
+                ):
+                    raise PermissionDeniedError(
+                        "Мастер может только завершить запись"
+                    )
+
         async with self.uow_factory() as uow:
             booking_repo = uow.repository(Booking)
 
-            payload = data.model_dump(exclude_unset=True)
             if not payload:
-                return await booking_repo.get_single(booking_id=pk)
+                return await booking_repo.get_single(
+                    rule=rule, booking_id=pk
+                )
 
-            await booking_repo.update(payload, booking_id=pk)
+            await booking_repo.update(
+                payload, rule=rule, booking_id=pk
+            )
             await uow.commit()
-            return await booking_repo.get_single(booking_id=pk)
+            return await booking_repo.get_single(rule=rule, booking_id=pk)
 
-    async def delete(self, pk: int, rule=None) -> None:
+    async def delete(
+        self, pk: int, rule: PermissionRule | None = None
+    ) -> None:
         """Мягко удалить бронь (активную — предварительно отменив)."""
         async with self.uow_factory() as uow:
             booking_repo = uow.repository(Booking)
 
-            booking = await booking_repo.get_single(booking_id=pk)
+            booking = await booking_repo.get_single(
+                rule=rule, booking_id=pk
+            )
             if booking is None:
                 return
             if booking.status != BookingStatus.CANCELLED:
                 await booking_repo.update(
-                    {"status": BookingStatus.CANCELLED}, booking_id=pk
+                    {"status": BookingStatus.CANCELLED},
+                    rule=rule,
+                    booking_id=pk,
                 )
-            await booking_repo.delete(booking_id=pk)
+            await booking_repo.delete(rule=rule, booking_id=pk)
             await uow.commit()
 
     async def get_multi(
@@ -297,6 +379,8 @@ class BookingService(BaseService[Booking, BookingCreate, BookingUpdate]):
             filters["client_id"] = client_id
         if status is not None:
             filters["status"] = status
+        if rule is not None and rule.scope == Scope.OWN:
+            filters[rule.owner_field] = rule.owner_id
         async with self.uow_factory() as uow:
             repo = uow.repository(Booking)
             if date_from is None and date_to is None:

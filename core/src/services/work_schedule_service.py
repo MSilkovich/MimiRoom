@@ -9,7 +9,9 @@ class WorkScheduleService(
 ):
     model = WorkSchedule
 
-    async def create(self, data: WorkScheduleCreate) -> WorkSchedule:
+    async def create(
+        self, data: WorkScheduleCreate, rule=None
+    ) -> WorkSchedule:
         async with self.uow_factory() as uow:
             repo = uow.repository(WorkSchedule)
             existing = await repo.get_single(
@@ -19,7 +21,7 @@ class WorkScheduleService(
                 raise ConflictError(
                     "Для мастера уже задан график на этот день недели"
                 )
-            instance = await repo.create(data.model_dump())
+            instance = await repo.create(data.model_dump(), rule)
             await uow.commit()
             return instance
 
@@ -37,5 +39,5 @@ class WorkScheduleService(
         async with self.uow_factory() as uow:
             repo = uow.repository(WorkSchedule)
             return await repo.get_multi(
-                order=order, limit=limit, offset=offset, **filters
+                order=order, limit=limit, offset=offset, rule=rule, **filters
             )

@@ -2,6 +2,7 @@ from ..excpetions.crud import NotFoundError
 from ..models.booking import Booking
 from ..models.enums.booking_status import BookingStatus
 from ..models.pet import Pet
+from ..permissions.permission_rule import PermissionRule
 from ..schemas import PetCreate, PetHistoryRead, PetUpdate
 from .base import BaseService
 
@@ -15,10 +16,13 @@ class PetService(BaseService[Pet, PetCreate, PetUpdate]):
         status: BookingStatus | None = None,
         limit: int = 100,
         offset: int = 0,
+        rule: PermissionRule | None = None,
     ) -> list[PetHistoryRead]:
         """Вернуть историю посещений питомца (брони, новые сверху)."""
         async with self.uow_factory() as uow:
-            pet = await uow.repository(Pet).get_single(pet_id=pet_id)
+            pet = await uow.repository(Pet).get_single(
+                rule=rule, pet_id=pet_id
+            )
             if pet is None:
                 raise NotFoundError("Питомец не найден")
 

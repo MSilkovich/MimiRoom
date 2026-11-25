@@ -11,6 +11,9 @@
 from fastapi import APIRouter, Depends, Security
 
 from src.excpetions.crud import NotFoundError
+from src.permissions.enums.permissions import Permission
+from src.permissions.enums.scope import Scope
+from src.permissions.permission_rule import PermissionRule
 from src.services import WorkScheduleService
 from src import dependencies as deps
 from src.schemas import (
@@ -34,10 +37,18 @@ async def work_schedule_list(
     service: WorkScheduleService = Depends(
         deps.get_service(WorkScheduleService)
     ),
+    rule: PermissionRule = Depends(
+        deps.require_perm(
+            Permission.SCHEDULE_READ, Scope.OWN, owner_field="master_id"
+        )
+    ),
 ):
-    """Вернуть графики работы (опционально — только одного мастера)."""
+    """Вернуть графики работы (опционально — только одного мастера).
+
+    Мастер видит только свой график; администратор/менеджер — все.
+    """
     return await service.get_multi(
-        limit=limit, offset=offset, master_id=master_id
+        limit=limit, offset=offset, master_id=master_id, rule=rule
     )
 
 
@@ -47,15 +58,22 @@ async def work_schedule_read(
     service: WorkScheduleService = Depends(
         deps.get_service(WorkScheduleService)
     ),
+    rule: PermissionRule = Depends(
+        deps.require_perm(
+            Permission.SCHEDULE_READ, Scope.OWN, owner_field="master_id"
+        )
+    ),
 ):
-    """Вернуть график по id."""
-    item = await service.get(pk)
+    """Вернуть график по id (мастер — только свой)."""
+    item = await service.get(pk, rule=rule)
     if item is None:
         raise NotFoundError("График не найден")
     return item
 
 
-@router.post("", response_model=WorkScheduleRead, status_code=201)
+@router.post("", response_model=WorkScheduleRead, status_code=201, dependencies=[
+    Depends(deps.require_perm(Permission.SCHEDULE_WRITE, Scope.ALL)),
+])
 async def work_schedule_create(
     data: WorkScheduleCreate,
     service: WorkScheduleService = Depends(
@@ -66,7 +84,9 @@ async def work_schedule_create(
     return await service.create(data)
 
 
-@router.put("/{pk}", response_model=WorkScheduleRead)
+@router.put("/{pk}", response_model=WorkScheduleRead, dependencies=[
+    Depends(deps.require_perm(Permission.SCHEDULE_WRITE, Scope.ALL)),
+])
 async def work_schedule_update(
     pk: int,
     data: WorkScheduleUpdate,
@@ -81,7 +101,9 @@ async def work_schedule_update(
     return item
 
 
-@router.delete("/{pk}", status_code=204)
+@router.delete("/{pk}", status_code=204, dependencies=[
+    Depends(deps.require_perm(Permission.SCHEDULE_DELETE, Scope.ALL)),
+])
 async def work_schedule_delete(
     pk: int,
     service: WorkScheduleService = Depends(

@@ -4,7 +4,6 @@ from sqlalchemy import select, text
 
 from ..models.booking import Booking
 from ..models.enums.booking_status import BookingStatus
-from ..permissions.enums.scope import Scope
 from .sqlalchemy_repository import SqlAlchemyRepository
 
 # Пространство имён advisory-lock, чтобы не пересекаться с другими блокировками.
@@ -80,8 +79,10 @@ class BookingRepository(SqlAlchemyRepository[Booking]):
         """
         filters["is_deleted"] = False
         stmt = select(Booking)
-        if rule is not None and rule.scope == Scope.OWN:
-            stmt = stmt.where(rule.sql_filter(Booking.who_create))
+        owner_field = self._owner_field(rule)
+        if owner_field is not None:
+            stmt = stmt.where(rule.sql_filter(
+                getattr(Booking, owner_field)))
         if filters:
             stmt = stmt.filter_by(**filters)
         if start_from is not None:

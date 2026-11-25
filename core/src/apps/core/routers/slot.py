@@ -12,7 +12,9 @@
 from fastapi import APIRouter, Depends
 
 from src.excpetions.auth import PermissionDeniedError
+from src.permissions.enums.permissions import Permission
 from src.permissions.enums.roles import Role
+from src.permissions.enums.scope import Scope
 from src.services import SlotService
 from src import dependencies as deps
 from src.schemas import (
@@ -40,7 +42,10 @@ def _require_admin(principal: Principal) -> None:
         raise PermissionDeniedError("Менять интервал слотов может администратор")
 
 
-@router.post("/available", response_model=list[SlotRead])
+@router.post("/available", response_model=list[SlotRead], dependencies=[
+    Depends(deps.require_perm(
+        Permission.SERVICE_READ, Scope.ALL, allow_service=True)),
+])
 async def slots_available(
     data: SlotsAvailableRequest,
     service: SlotService = Depends(deps.get_service(SlotService)),
@@ -53,7 +58,10 @@ async def slots_available(
     return await service.list_available(data)
 
 
-@router.get("/interval", response_model=SlotIntervalRead)
+@router.get("/interval", response_model=SlotIntervalRead, dependencies=[
+    Depends(deps.require_perm(
+        Permission.SERVICE_READ, Scope.ALL, allow_service=True)),
+])
 async def slot_interval_get(
     service: SlotService = Depends(deps.get_service(SlotService)),
 ):
@@ -61,7 +69,9 @@ async def slot_interval_get(
     return SlotIntervalRead(interval_minutes=await service.get_interval())
 
 
-@router.post("/interval", response_model=SlotIntervalRead)
+@router.post("/interval", response_model=SlotIntervalRead, dependencies=[
+    Depends(deps.require_perm(Permission.SERVICE_WRITE, Scope.ALL)),
+])
 async def slot_interval_set(
     data: SlotIntervalUpdate,
     service: SlotService = Depends(deps.get_service(SlotService)),

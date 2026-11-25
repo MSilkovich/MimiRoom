@@ -13,6 +13,8 @@
 from fastapi import APIRouter, Depends, Security
 
 from src.excpetions.crud import NotFoundError
+from src.permissions.enums.permissions import Permission
+from src.permissions.enums.scope import Scope
 from src.services import StorageService
 from src import dependencies as deps
 from src.schemas import StorageCreate, StorageRead, StorageUpdate
@@ -24,7 +26,9 @@ router = APIRouter(prefix="/storages", tags=["storage"], dependencies=[
 ])
 
 
-@router.get("", response_model=list[StorageRead])
+@router.get("", response_model=list[StorageRead], dependencies=[
+    Depends(deps.require_perm(Permission.STORAGE_READ, Scope.ALL)),
+])
 async def storage_list(
     limit: int = 100, offset: int = 0, servive: StorageService = Depends(deps.get_service(StorageService))
 ):
@@ -32,7 +36,9 @@ async def storage_list(
     return await servive.get_multi(limit=limit, offset=offset)
 
 
-@router.get("/{pk}", response_model=StorageRead)
+@router.get("/{pk}", response_model=StorageRead, dependencies=[
+    Depends(deps.require_perm(Permission.STORAGE_READ, Scope.ALL)),
+])
 async def storage_read(pk: int, servive: StorageService = Depends(deps.get_service(StorageService))):
     """Вернуть склад по id."""
     item = await servive.get(pk)
@@ -41,13 +47,17 @@ async def storage_read(pk: int, servive: StorageService = Depends(deps.get_servi
     return item
 
 
-@router.post("", response_model=StorageRead, status_code=201)
+@router.post("", response_model=StorageRead, status_code=201, dependencies=[
+    Depends(deps.require_perm(Permission.STORAGE_WRITE, Scope.ALL)),
+])
 async def storage_create(data: StorageCreate, servive: StorageService = Depends(deps.get_service(StorageService))):
     """Создать склад."""
     return await servive.create(data)
 
 
-@router.put("/{pk}", response_model=StorageRead)
+@router.put("/{pk}", response_model=StorageRead, dependencies=[
+    Depends(deps.require_perm(Permission.STORAGE_WRITE, Scope.ALL)),
+])
 async def storage_update(
     pk: int, data: StorageUpdate, servive: StorageService = Depends(deps.get_service(StorageService))
 ):
@@ -58,7 +68,9 @@ async def storage_update(
     return item
 
 
-@router.delete("/{pk}", status_code=204)
+@router.delete("/{pk}", status_code=204, dependencies=[
+    Depends(deps.require_perm(Permission.STORAGE_DELETE, Scope.ALL)),
+])
 async def storage_delete(pk: int, servive: StorageService = Depends(deps.get_service(StorageService))):
     """Удалить склад."""
     await servive.delete(pk)

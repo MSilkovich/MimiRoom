@@ -12,6 +12,10 @@ class PermissionRule:
     scope: Scope
     # если OWN — фильтр по владельцу; если ALL — None
     owner_id: int | None
+    # Имя колонки, по которой ограничивается OWN-доступ. Для большинства
+    # сущностей это аудит who_create, но у питомцев — owner_id, у броней —
+    # client_id/master_id, у графиков — master_id.
+    owner_field: str = "who_create"
 
     @property
     def is_unrestricted(self) -> bool:

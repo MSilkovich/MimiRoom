@@ -4,7 +4,7 @@ from .pet_type import PetTypeRead, PetTypeCreate, PetTypeUpdate
 from .breed import BreedRead, BreedCreate, BreedUpdate
 from .service import ServiceRead, ServiceCreate, ServiceUpdate
 from .storage import StorageRead, StorageCreate, StorageUpdate
-from .user import UserRead, UserCreate, UserUpdate
+from .user import UserRead, UserCreate, UserUpdate, UserProfileRead, UserRoleUpdate
 from .user_link import (
     UserLinkUpdate,
     UserLinkRead,
@@ -59,6 +59,8 @@ __all__ = [
     "UserRead",
     "UserCreate",
     "UserUpdate",
+    "UserProfileRead",
+    "UserRoleUpdate",
     "PetRead",
     "PetCreate",
     "PetUpdate",

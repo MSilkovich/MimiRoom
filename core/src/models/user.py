@@ -19,6 +19,17 @@ if TYPE_CHECKING:
     from src.schemas.user import UserLink
 
 
+def _default_permission_mask(context) -> int:
+    """Маска по роли при вставке пользователя (если не передана явно)."""
+    role = context.get_current_parameters().get("role") or Role.CLIENT
+    if not isinstance(role, Role):
+        try:
+            role = Role(role)
+        except ValueError:
+            role = Role.__members__.get(str(role), Role.CLIENT)
+    return ROLE_MASK.get(role, ROLE_MASK[Role.CLIENT])
+
+
 class User(Base):
     __tablename__ = "user"
 
@@ -41,7 +52,7 @@ class User(Base):
     permission_mask: Mapped[int] = mapped_column(
         BigInteger,
         nullable=False,
-        default=ROLE_MASK[Role.CLIENT],
+        default=_default_permission_mask,
         server_default=text(str(ROLE_MASK[Role.CLIENT]))
     )
 

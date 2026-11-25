@@ -10,7 +10,7 @@
 from sqlalchemy import text
 
 from src.services import MeasureUnitService
-from src.context import current_user_id
+from src.context import system_context
 from src.schemas.measure_unit import MeasureUnitCreate, MeasureUnitUpdate
 
 
@@ -64,11 +64,8 @@ async def test_delete(measure_unit_service):
 
 
 async def test_create_sets_audit_user(measure_unit_service):
-    token = current_user_id.set(77)
-    try:
+    with system_context(fake_user_id=77):
         created = await measure_unit_service.create(MeasureUnitCreate(title="аудит"))
-    finally:
-        current_user_id.reset(token)
 
     assert created.who_create == 77
     assert created.who_update == 77
