@@ -11,6 +11,8 @@
 from fastapi import APIRouter, Depends, Security
 
 from src.excpetions.crud import NotFoundError
+from src.permissions.enums.permissions import Permission
+from src.permissions.enums.scope import Scope
 from src.services import PetTypeService
 from src import dependencies as deps
 from src.schemas import PetTypeCreate, PetTypeRead, PetTypeUpdate
@@ -23,7 +25,9 @@ router = APIRouter(prefix="/pet-types", tags=["pet-types"], dependencies=[
 ])
 
 
-@router.get("", response_model=list[PetTypeRead])
+@router.get("", response_model=list[PetTypeRead], dependencies=[
+    Depends(deps.require_perm(Permission.DICTIONARIES_READ, Scope.ALL)),
+])
 async def pet_type_list(
     limit: int = 100, offset: int = 0, servive: PetTypeService = Depends(deps.get_service(PetTypeService))
 ):
@@ -31,7 +35,9 @@ async def pet_type_list(
     return await servive.get_multi(limit=limit, offset=offset)
 
 
-@router.get("/{pk}", response_model=PetTypeRead)
+@router.get("/{pk}", response_model=PetTypeRead, dependencies=[
+    Depends(deps.require_perm(Permission.DICTIONARIES_READ, Scope.ALL)),
+])
 async def pet_type_read(pk: int, servive: PetTypeService = Depends(deps.get_service(PetTypeService))):
     """Вернуть вид животного по id."""
     item = await servive.get(pk)
@@ -40,13 +46,17 @@ async def pet_type_read(pk: int, servive: PetTypeService = Depends(deps.get_serv
     return item
 
 
-@router.post("", response_model=PetTypeRead, status_code=201)
+@router.post("", response_model=PetTypeRead, status_code=201, dependencies=[
+    Depends(deps.require_perm(Permission.DICTIONARIES_WRITE, Scope.ALL)),
+])
 async def pet_type_create(data: PetTypeCreate, servive: PetTypeService = Depends(deps.get_service(PetTypeService))):
     """Создать вид животного."""
     return await servive.create(data)
 
 
-@router.put("/{pk}", response_model=PetTypeRead)
+@router.put("/{pk}", response_model=PetTypeRead, dependencies=[
+    Depends(deps.require_perm(Permission.DICTIONARIES_WRITE, Scope.ALL)),
+])
 async def pet_type_update(
     pk: int, data: PetTypeUpdate, servive: PetTypeService = Depends(deps.get_service(PetTypeService))
 ):
@@ -57,7 +67,9 @@ async def pet_type_update(
     return item
 
 
-@router.delete("/{pk}", status_code=204)
+@router.delete("/{pk}", status_code=204, dependencies=[
+    Depends(deps.require_perm(Permission.DICTIONARIES_DELETE, Scope.ALL)),
+])
 async def pet_type_delete(pk: int, servive: PetTypeService = Depends(deps.get_service(PetTypeService))):
     """Удалить вид животного."""
     await servive.delete(pk)

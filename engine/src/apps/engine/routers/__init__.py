@@ -5,3 +5,4 @@
 """
 
 from .chat import router as chat_router
+from .staff import router as staff_router

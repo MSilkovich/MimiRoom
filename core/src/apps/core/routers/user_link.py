@@ -30,6 +30,8 @@ from src.middleware.mix_scheme import get_principal
 from src.middleware.principal import Principal
 from src.models.enums.provider import Provider
 from src.models.user import User
+from src.permissions.enums.permissions import Permission
+from src.permissions.enums.scope import Scope
 from src.schemas import (
     LinkCodeConsumeRequest,
     LinkCodeResponse,
@@ -47,7 +49,12 @@ router = APIRouter(prefix="/users/link", tags=["users"])
 # Lookup (access + service)
 # --------------------------------------------------------------------------- #
 
-@router.get("", response_model=UserLinkRead)
+@router.get("", response_model=UserLinkRead, dependencies=[
+    Depends(deps.require_perm(
+        Permission.USER_READ, Scope.OWN, owner_field="user_id",
+        allow_service=True,
+    )),
+])
 async def get_user_link(
     provider: Provider = Query(..., examples=["telegram"]),
     external_id: str = Query(..., max_length=64, examples=["123456789"]),
@@ -74,7 +81,10 @@ async def get_user_link(
 # CRUD для ЛК (только access)
 # --------------------------------------------------------------------------- #
 
-@router.get("/all", response_model=list[UserLinkRead])
+@router.get("/all", response_model=list[UserLinkRead], dependencies=[
+    Depends(deps.require_perm(
+        Permission.USER_READ, Scope.OWN, owner_field="user_id")),
+])
 async def list_my_links(
     limit: int = 100,
     offset: int = 0,
@@ -85,7 +95,10 @@ async def list_my_links(
     return await service.list_for_user(user.user_id, limit=limit, offset=offset)
 
 
-@router.get("/{link_id}", response_model=UserLinkRead)
+@router.get("/{link_id}", response_model=UserLinkRead, dependencies=[
+    Depends(deps.require_perm(
+        Permission.USER_READ, Scope.OWN, owner_field="user_id")),
+])
 async def get_my_link(
     link_id: int,
     service: UserLinkService = Depends(deps.get_service(UserLinkService)),
@@ -98,7 +111,10 @@ async def get_my_link(
     return item
 
 
-@router.post("", response_model=UserLinkRead, status_code=201)
+@router.post("", response_model=UserLinkRead, status_code=201, dependencies=[
+    Depends(deps.require_perm(
+        Permission.USER_WRITE, Scope.OWN, owner_field="user_id")),
+])
 async def create_user_link(
     payload: UserLinkCreate,
     service: UserLinkService = Depends(deps.get_service(UserLinkService)),
@@ -120,7 +136,10 @@ async def create_user_link(
     return await service.link_external(data)
 
 
-@router.put("/{link_id}", response_model=UserLinkRead)
+@router.put("/{link_id}", response_model=UserLinkRead, dependencies=[
+    Depends(deps.require_perm(
+        Permission.USER_WRITE, Scope.OWN, owner_field="user_id")),
+])
 async def update_my_link(
     link_id: int,
     payload: UserLinkUpdate,
@@ -134,7 +153,10 @@ async def update_my_link(
     return item
 
 
-@router.delete("/{link_id}", status_code=204)
+@router.delete("/{link_id}", status_code=204, dependencies=[
+    Depends(deps.require_perm(
+        Permission.USER_WRITE, Scope.OWN, owner_field="user_id")),
+])
 async def delete_my_link(
     link_id: int,
     service: UserLinkService = Depends(deps.get_service(UserLinkService)),
@@ -151,7 +173,10 @@ async def delete_my_link(
 # Одноразовые коды для /start
 # --------------------------------------------------------------------------- #
 
-@router.post("/code", response_model=LinkCodeResponse, status_code=201)
+@router.post("/code", response_model=LinkCodeResponse, status_code=201, dependencies=[
+    Depends(deps.require_perm(
+        Permission.USER_WRITE, Scope.OWN, owner_field="user_id")),
+])
 async def create_link_code(
     provider: Provider = Query(default=Provider.TELEGRAM),
     user: User = Depends(get_current_user),

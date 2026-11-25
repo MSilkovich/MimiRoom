@@ -16,6 +16,7 @@ from aiogram.webhook.aiohttp_server import (
 from aiogram.webhook.security import DEFAULT_TELEGRAM_NETWORKS, IPFilter
 from aiohttp import web
 from aiohttp.typedefs import Middleware
+from aiogram.enums import ParseMode
 
 import errors
 import handlers
@@ -92,14 +93,16 @@ def _build_bot() -> Bot:
     api = TEST if settings_telegram.TEST_SERVER is True else PRODUCTION
     return Bot(
         token=token,
-        session=AiohttpSession(api=api),
-        default=DefaultBotProperties(parse_mode="HTML"),
+        session=AiohttpSession(api=api,
+                               proxy=settings_telegram.PROXY_LINK),
+        default=DefaultBotProperties(parse_mode=ParseMode.MARKDOWN_V2),
     )
 
 
 async def main() -> None:
     setup_logging()
-    logger.info("Starting %s v%s", settings_app.PROJECT_NAME, settings_app.VERSION)
+    logger.info("Starting %s v%s", settings_app.PROJECT_NAME,
+                settings_app.VERSION)
 
     bot = _build_bot()
 
@@ -116,7 +119,8 @@ async def main() -> None:
     if settings_telegram.WEBHOOKS:
         app = web.Application(
             middlewares=[
-                cast(Middleware, ip_filter_middleware(IPFilter(DEFAULT_TELEGRAM_NETWORKS))),
+                cast(Middleware, ip_filter_middleware(
+                    IPFilter(DEFAULT_TELEGRAM_NETWORKS))),
             ],
         )
 

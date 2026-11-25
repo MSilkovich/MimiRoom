@@ -25,6 +25,11 @@ class Settings(BaseSettings):
     REDIS_CLAIM_MIN_IDLE_MS: int = Field(default=60_000)
     REDIS_JANITOR_INTERVAL_SEC: int = Field(default=30)
 
+    # В redis-py 8.x дефолтный socket_timeout = 5с; он должен быть БОЛЬШЕ
+    # REDIS_BLOCK_MS, иначе блокирующий XREADGROUP падает с "Timeout reading".
+    REDIS_SOCKET_TIMEOUT_SEC: float = Field(default=15)
+    REDIS_HEALTH_CHECK_INTERVAL_SEC: int = Field(default=30)
+
     # Память диалогов (Redis List)
     DIALOG_TTL_SEC: int = Field(
         default=900,

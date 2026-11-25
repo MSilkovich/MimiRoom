@@ -26,7 +26,9 @@ router = APIRouter(prefix="/measure-units", tags=["measure-units"], dependencies
 ])
 
 
-@router.get("", response_model=list[MeasureUnitRead])
+@router.get("", response_model=list[MeasureUnitRead], dependencies=[
+    Depends(deps.require_perm(Permission.DICTIONARIES_READ, Scope.ALL)),
+])
 async def measure_unit_list(
     limit: int = 100,
     offset: int = 0,
@@ -36,7 +38,9 @@ async def measure_unit_list(
     return await servive.get_multi(limit=limit, offset=offset)
 
 
-@router.get("/{pk}", response_model=MeasureUnitRead)
+@router.get("/{pk}", response_model=MeasureUnitRead, dependencies=[
+    Depends(deps.require_perm(Permission.DICTIONARIES_READ, Scope.ALL)),
+])
 async def measure_unit_read(
     pk: int,
     servive: MeasureUnitService = Depends(
@@ -49,7 +53,9 @@ async def measure_unit_read(
     return item
 
 
-@router.post("", response_model=MeasureUnitRead, status_code=201)
+@router.post("", response_model=MeasureUnitRead, status_code=201, dependencies=[
+    Depends(deps.require_perm(Permission.DICTIONARIES_WRITE, Scope.ALL)),
+])
 async def measure_unit_create(
     data: MeasureUnitCreate,
     servive: MeasureUnitService = Depends(
@@ -59,7 +65,9 @@ async def measure_unit_create(
     return await servive.create(data)
 
 
-@router.put("/{pk}", response_model=MeasureUnitRead)
+@router.put("/{pk}", response_model=MeasureUnitRead, dependencies=[
+    Depends(deps.require_perm(Permission.DICTIONARIES_WRITE, Scope.ALL)),
+])
 async def measure_unit_update(
     pk: int,
     data: MeasureUnitUpdate,
@@ -72,7 +80,9 @@ async def measure_unit_update(
     return item
 
 
-@router.delete("/{pk}", status_code=204)
+@router.delete("/{pk}", status_code=204, dependencies=[
+    Depends(deps.require_perm(Permission.DICTIONARIES_DELETE, Scope.ALL)),
+])
 async def measure_unit_delete(
     pk: int,
     servive: MeasureUnitService = Depends(

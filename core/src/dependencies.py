@@ -1,13 +1,15 @@
 from collections.abc import AsyncIterator
-from typing import Annotated
+from typing import Annotated, Callable
 
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from config.database.db_helper import db_helper
-from src.context import get_current_user
 from src.excpetions.auth import PermissionDeniedError
-from src.permissions.bitmask import get_scope, has
+from src.middleware.auth import get_current_user as get_authenticated_user
+from src.middleware.mix_scheme import get_principal
+from src.middleware.principal import Principal
+from src.permissions.bitmask import get_scope
 from src.permissions.enums.permissions import Permission
 from src.permissions.enums.scope import Scope
 from src.permissions.permission_rule import PermissionRule
@@ -52,12 +54,22 @@ def get_service(service_cls):
     return _get_service
 
 
-def require_perm(perm: Permission, min_scope: Scope = Scope.OWN):
+def require_perm(
+    perm: Permission,
+    min_scope: Scope = Scope.OWN,
+    owner_field: str | Callable[[User], str] = "who_create",
+    allow_service: bool = False,
+):
     """Проверяет уровень доступа и возвращает правило доступа.
 
     Args:
-        perm: необходимое правило
-        min_scope: минимальный уровень правила
+        perm: необходимое правило.
+        min_scope: минимальный уровень правила.
+        owner_field: колонка, по которой ограничивается OWN-доступ. Может быть
+            callable(user) — например, для броней: клиент ограничивается
+            ``client_id``, грумер — ``master_id``.
+        allow_service: разрешать ли сервисные токены. Для shared-ручек
+            (слоты, брони), которые дергает engine, включаем явно.
 
     Returns:
         PermissionRule: объект правила доступа.
@@ -65,18 +77,54 @@ def require_perm(perm: Permission, min_scope: Scope = Scope.OWN):
     Raises:
         PermissionDeniedError: Если уровень права доступа недостаточен.
     """
-    async def _checker(user: User = Depends(get_current_user)) -> PermissionRule:
+    async def _checker(
+        principal: Principal = Depends(get_principal),
+    ) -> PermissionRule:
+        if principal.is_service:
+            if not allow_service:
+                raise PermissionDeniedError("Сервисный токен сюда не допускается")
+            return PermissionRule(
+                permission=perm,
+                scope=Scope.ALL,
+                owner_id=None,
+                owner_field=(
+                    owner_field
+                    if isinstance(owner_field, str)
+                    else "who_create"
+                ),
+            )
+
+        user = principal.user
+        if user is None:
+            raise PermissionDeniedError()
+
         scope = get_scope(user.permission_mask, perm)
         if not scope.allows(min_scope):
             raise PermissionDeniedError()
+
+        field = owner_field(user) if callable(owner_field) else owner_field
         owner_id = user.user_id if scope == Scope.OWN else None
-        return PermissionRule(permission=perm, scope=scope, owner_id=owner_id)
+        return PermissionRule(
+            permission=perm,
+            scope=scope,
+            owner_id=owner_id,
+            owner_field=field,
+        )
     return _checker
 
 
 def require_role(*roles: str):
-    async def _checker(user: User = Depends(get_current_user)) -> None:
+    async def _checker(user: User = Depends(get_authenticated_user)) -> None:
         if user.role not in roles:
             raise PermissionDeniedError("У роли недостаточно прав")
         return None
     return _checker
+
+
+async def require_service(
+    principal: Principal = Depends(get_principal),
+) -> Principal:
+    """Разрешить только сервисный токен (внутренние ручки /s/*)."""
+    if not principal.is_service:
+        raise PermissionDeniedError("Доступно только сервисному токену")
+    return principal

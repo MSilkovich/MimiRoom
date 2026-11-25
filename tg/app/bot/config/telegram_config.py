@@ -22,5 +22,7 @@ class Settings(BaseSettings):
     # Публичный username бота (для формирования ссылки привязки).
     BOT_USERNAME: str = ""
 
+    PROXY_LINK: str | None = None
+
 
 settings_telegram = Settings()

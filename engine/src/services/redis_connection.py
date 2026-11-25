@@ -21,6 +21,11 @@ async def get_redis() -> redis.Redis:
             encoding="utf-8",
             decode_responses=True,
             max_connections=20,
+            # Больше REDIS_BLOCK_MS, иначе блокирующий XREADGROUP падает
+            # с "Timeout reading" (дефолт redis-py 8.x — 5с).
+            socket_timeout=settings_redis.REDIS_SOCKET_TIMEOUT_SEC,
+            socket_connect_timeout=settings_redis.REDIS_SOCKET_TIMEOUT_SEC,
+            health_check_interval=settings_redis.REDIS_HEALTH_CHECK_INTERVAL_SEC,
         )
         logger.info("Redis client created for %s", settings_redis.redis_url)
     return _client

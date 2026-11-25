@@ -4,6 +4,7 @@ from decimal import Decimal
 from pydantic import Field, computed_field
 
 from .base_schema import Base
+from .master import MasterBriefRead
 from .service_consumable import (
     ServiceConsumableCreateWithService,
     ServiceConsumableRead,
@@ -13,9 +14,14 @@ from .service_consumable import (
 class ServiceRead(Base):
     service_id: int
     title: str
+    description: str | None = None
     duration: timedelta | None
     price: Decimal
+    buffer_before_minutes: int
+    buffer_after_minutes: int
     breed_id: int | None
+    breed_title: str | None = None
+    masters: list[MasterBriefRead] = Field(default_factory=list)
     consumables: list[ServiceConsumableRead] = Field(default_factory=list)
 
     @computed_field
@@ -31,10 +37,14 @@ class ServiceRead(Base):
             "example": {
                 "service_id": 1,
                 "title": "Стрижка",
+                "description": "Стрижка с мытьём и сушкой",
                 "duration": "PT1H30M",
                 "duration_minutes": 90,
                 "price": "1500.00",
+                "buffer_before_minutes": 10,
+                "buffer_after_minutes": 10,
                 "breed_id": 1,
+                "masters": [],
                 "consumables": [
                     {"consumable_id": 1, "volume": 2},
                     {"consumable_id": 2, "volume": 1},
@@ -46,13 +56,21 @@ class ServiceRead(Base):
 
 class ServiceCreate(Base):
     title: str = Field(..., examples=["Стрижка"])
+    description: str | None = Field(default=None, examples=["Стрижка с мытьём и сушкой"])
     duration: timedelta | None = Field(
         default=None,
         description="Длительность в ISO 8601 (например, PT1H30M = 1ч30м, P3D = 3 дня)",
         examples=["PT1H30M", "PT45M", "P1D"],
     )
     price: Decimal = Field(..., examples=["1500.00"])
+    buffer_before_minutes: int = Field(default=0, ge=0, examples=[10])
+    buffer_after_minutes: int = Field(default=0, ge=0, examples=[10])
     breed_id: int | None = Field(default=None, examples=[1])
+    master_ids: list[int] = Field(
+        default_factory=list,
+        description="Мастера (user_id), которые оказывают услугу",
+        examples=[[1, 2]],
+    )
     consumables: list[ServiceConsumableCreateWithService] = Field(
         default_factory=list,
         description="Список материалов, списываемых при оказании услуги",
@@ -67,10 +85,16 @@ class ServiceCreate(Base):
 
 class ServiceUpdate(Base):
     title: str | None = Field(default=None, examples=["Стрижка"])
+    description: str | None = Field(default=None, examples=["Стрижка с мытьём и сушкой"])
     duration: timedelta | None = Field(
         default=None,
         description="Длительность в ISO 8601 (например, PT1H30M = 1ч30м, P3D = 3 дня)",
         examples=["PT1H30M", "PT45M", "P1D"],
     )
     price: Decimal | None = Field(default=None, examples=["1500.00"])
+    buffer_before_minutes: int | None = Field(default=None, ge=0, examples=[10])
+    buffer_after_minutes: int | None = Field(default=None, ge=0, examples=[10])
     breed_id: int | None = Field(default=None, examples=[1])
+    master_ids: list[int] | None = Field(
+        default=None, description="Если передано — набор мастеров будет заменён"
+    )

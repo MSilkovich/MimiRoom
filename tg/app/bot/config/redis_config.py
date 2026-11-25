@@ -31,6 +31,12 @@ class Settings(BaseSettings):
     REDIS_READ_COUNT: int = Field(default=10)
     REDIS_BLOCK_MS: int = Field(default=5000)
 
+    # ВАЖНО: в redis-py 8.x дефолтный socket_timeout = 5с. Блокирующий
+    # XREADGROUP с block=5000мс при таком таймауте падает с
+    # "TimeoutError: Timeout reading". Таймаут сокета обязан быть БОЛЬШЕ block.
+    REDIS_SOCKET_TIMEOUT_SEC: float = Field(default=15)
+    REDIS_HEALTH_CHECK_INTERVAL_SEC: int = Field(default=30)
+
     # Кэш связки «провайдер/external_id -> внутренний user_id».
     # TTL диалога = 30 минут.
     LINK_CACHE_KEY_PREFIX: str = Field(default="tg:link")

@@ -3,7 +3,7 @@ import logging
 from fastapi import FastAPI
 
 from config.project_config import settings_app
-from src.apps.core.routes import get_apps_router
+from src.apps.core.routes import get_apps_router, get_staff_router
 from src.excpetions.hadlers import register_exception_handlers
 from src.middleware.auth import AuthMiddleware
 from src.middleware.error import ErrorMiddleware
@@ -72,12 +72,26 @@ Access-токен передаётся в заголовке `Authorization: Bea
                 "description": "Справочник единиц измерения (мл, г, шт, ...).",
             },
             {
-                "name": "book",
-                "description": "Записи на услуги: питомец, мастер, дата/время, услуга, комментарий.",
+                "name": "masters",
+                "description": "Мастера (bookable users): услуги, которые они оказывают.",
+            },
+            {
+                "name": "work-schedules",
+                "description": "График работы мастеров по дням недели — основа расчёта слотов.",
+            },
+            {
+                "name": "slots",
+                "description": "Расчётные слоты: доступное время по графику, услуге и броням; "
+                "административный интервал сетки.",
+            },
+            {
+                "name": "bookings",
+                "description": "Бронирования: запись на конкретное время, отмена.",
             },
         ],
     )
 
+    application.include_router(get_staff_router())
     application.include_router(get_apps_router())
 
     # добавляется первым = внутренний слой

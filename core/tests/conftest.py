@@ -11,17 +11,14 @@
 
 from __future__ import annotations
 
-import os
 import uuid
 from datetime import datetime, timezone
 
-import pytest
 import pytest_asyncio
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
 
-import src.models  # noqa: F401
 from src.models.base_model import Base
 from src.repositories.uow import SqlAlchemyUnitOfWork
 from src.services.measure_unit_service import MeasureUnitService
@@ -51,7 +48,9 @@ async def engine():
         pool_pre_ping=True,
         poolclass=NullPool,
         # search_path применяется к каждому новому соединению из пула.
-        connect_args={"server_settings": {"search_path": f"{schema},public"}},
+        # Только тестовая схема (без public), иначе create_all «увидит» старые
+        # таблицы из public и не создаст собственные изолированные.
+        connect_args={"server_settings": {"search_path": f"{schema}"}},
     )
 
     # Создаём схему один раз на всю сессию.

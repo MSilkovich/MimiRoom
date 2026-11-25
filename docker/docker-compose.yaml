@@ -35,6 +35,15 @@ services:
       - redisinsight-data:/data
     restart: unless-stopped
 
+  xray:
+    image: lovechen/xray:latest
+    container_name: xray-proxy
+    restart: unless-stopped
+    volumes:
+      - ./vpn-config.json:/etc/xray/config.json:ro
+    networks:
+      - network-bridge
+
 volumes:
   postgres-data:
   redis-data:

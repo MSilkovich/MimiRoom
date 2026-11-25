@@ -7,8 +7,8 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from .base_model import Base
 
 if TYPE_CHECKING:
+    from .booking import Booking
     from .breed import Breed
-    from .book import Book
     from .user import User
 
 
@@ -37,8 +37,8 @@ class Pet(Base):
         back_populates="pets",
         lazy="selectin"
     )
-    books: Mapped[list["Book"]] = relationship(
-        "Book",
+    bookings: Mapped[list["Booking"]] = relationship(
+        "Booking",
         back_populates="pet",
         lazy="selectin"
     )

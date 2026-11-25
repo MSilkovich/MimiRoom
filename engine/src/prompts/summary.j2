@@ -8,10 +8,20 @@
 ПИТОМЦЫ:
 {% if pets %}
 {% for p in pets %}
-- id={{ p.id }}, кличка «{{ p.name }}»{% if p.pet_type %}, вид: {{ p.pet_type }}{% endif %}{% if p.breed %}, порода: {{ p.breed }}{% endif %}
+- id={{ p.id }}, кличка «{{ p.name }}»{% if p.pet_type %} (вид: {{ p.pet_type }}{% if p.pet_type_id %}, pet_type_id={{ p.pet_type_id }}{% endif %}){% endif %}{% if p.breed %}, порода/размер: {{ p.breed }}{% if p.breed_id %} (breed_id={{ p.breed_id }}){% endif %}{% endif %}{% if p.age_years is not none %}, возраст: {{ p.age_years }} г.{% elif p.birthday %}, д.р.: {{ p.birthday }}{% endif %}
+
 {% endfor %}
 {% else %}
-- Питомцев в системе нет. Если пользователь называет питомца — запиши без pet_id, кличку укажи в comment.
+- Питомцев в системе нет. Если пользователь называет питомца — кличку и детали укажи в comment при создании записи.
+{% endif %}
+
+ЗАПИСИ (ближайшие активные):
+{% if appointments %}
+{% for a in appointments %}
+- id={{ a.booking_id }}: {{ a.service_title or ('услуга #' ~ a.service_id) }}, мастер {{ a.master_name or a.master_id }}, {{ a.start_time }}–{{ a.end_time }}, статус: {{ a.status }}
+{% endfor %}
+{% else %}
+- Активных записей нет.
 {% endif %}
 
 {% if notes %}

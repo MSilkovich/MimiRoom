@@ -1,8 +1,8 @@
 from typing import TYPE_CHECKING
 
-from sqlalchemy import BigInteger, ForeignKey, String, text
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy import BigInteger, String, text
 from sqlalchemy import Enum as SAEnum
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.permissions.role_permissions import ROLE_MASK
 
@@ -11,10 +11,23 @@ from .base_model import Base
 from src.permissions.enums.roles import Role
 
 if TYPE_CHECKING:
-    from .book import Book
+    from .booking import Booking
     from .pet import Pet
     from .refresh_token import RefreshToken
+    from .service import Service
+    from .work_schedule import WorkSchedule
     from src.schemas.user import UserLink
+
+
+def _default_permission_mask(context) -> int:
+    """Маска по роли при вставке пользователя (если не передана явно)."""
+    role = context.get_current_parameters().get("role") or Role.CLIENT
+    if not isinstance(role, Role):
+        try:
+            role = Role(role)
+        except ValueError:
+            role = Role.__members__.get(str(role), Role.CLIENT)
+    return ROLE_MASK.get(role, ROLE_MASK[Role.CLIENT])
 
 
 class User(Base):
@@ -39,7 +52,7 @@ class User(Base):
     permission_mask: Mapped[int] = mapped_column(
         BigInteger,
         nullable=False,
-        default=ROLE_MASK[Role.CLIENT],
+        default=_default_permission_mask,
         server_default=text(str(ROLE_MASK[Role.CLIENT]))
     )
 
@@ -49,15 +62,28 @@ class User(Base):
         lazy="selectin"
     )
 
-    books_as_master: Mapped[list["Book"]] = relationship(
-        "Book",
-        back_populates="master",
-        foreign_keys="Book.master_id",
+    services: Mapped[list["Service"]] = relationship(
+        "Service",
+        secondary="master_services",
+        lazy="selectin",
+        viewonly=True,
     )
-    books_as_client: Mapped[list["Book"]] = relationship(
-        "Book",
+    work_schedules: Mapped[list["WorkSchedule"]] = relationship(
+        "WorkSchedule",
+        back_populates="master",
+        lazy="select",
+    )
+    bookings_as_master: Mapped[list["Booking"]] = relationship(
+        "Booking",
+        back_populates="master",
+        foreign_keys="Booking.master_id",
+        lazy="select",
+    )
+    bookings_as_client: Mapped[list["Booking"]] = relationship(
+        "Booking",
         back_populates="client",
-        foreign_keys="Book.client_id",
+        foreign_keys="Booking.client_id",
+        lazy="select",
     )
 
     refresh_tokens: Mapped[list["RefreshToken"]] = relationship(
