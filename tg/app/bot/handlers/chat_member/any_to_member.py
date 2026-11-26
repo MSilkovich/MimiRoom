@@ -8,6 +8,7 @@ from aiogram.exceptions import TelegramBadRequest
 from aiogram.filters import JOIN_TRANSITION, MEMBER, ChatMemberUpdatedFilter
 
 from errors.errors import TopicClosedError, resolve_exception
+from utils.escape_helper import mention_md_v2
 
 if TYPE_CHECKING:
     from aiogram.types import ChatMemberUpdated
@@ -26,9 +27,10 @@ async def left_to_member(chat_member: ChatMemberUpdated, bot: Bot) -> None:
     )
 
     try:
+        user = chat_member.new_chat_member.user
         await bot.send_message(
             chat_id=chat_member.chat.id,
-            text=f"Welcome, {chat_member.new_chat_member.user.mention_html()}",
+            text=f"Welcome, {mention_md_v2(user)}"
         )
 
     except TelegramBadRequest as e:

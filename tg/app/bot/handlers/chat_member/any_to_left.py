@@ -14,6 +14,7 @@ from aiogram.filters import (
     or_f,
 )
 
+from utils.escape_helper import mention_md_v2
 from errors.errors import TopicClosedError, resolve_exception
 
 if TYPE_CHECKING:
@@ -33,9 +34,10 @@ async def leave_transition(chat_member: ChatMemberUpdated, bot: Bot) -> None:
     )
 
     try:
+        user = chat_member.new_chat_member.user
         await bot.send_message(
             chat_id=chat_member.chat.id,
-            text=f"Bye, {chat_member.new_chat_member.user.mention_html()}",
+            text=f"Bye, {mention_md_v2(user)}"
         )
 
     except TelegramBadRequest as e:
@@ -50,7 +52,8 @@ async def leave_transition(chat_member: ChatMemberUpdated, bot: Bot) -> None:
 
 
 @router.chat_member(
-    or_f(ChatMemberUpdatedFilter(KICKED >> LEFT), ChatMemberUpdatedFilter(RESTRICTED >> LEFT))
+    or_f(ChatMemberUpdatedFilter(KICKED >> LEFT),
+         ChatMemberUpdatedFilter(RESTRICTED >> LEFT))
 )
 async def kicked_to_left(chat_member: ChatMemberUpdated) -> None:
     logger.info(

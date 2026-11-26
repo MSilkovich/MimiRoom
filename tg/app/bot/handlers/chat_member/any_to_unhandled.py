@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 
 from aiogram import Bot, Router
 
+from utils.escape_helper import escape_md_v2, mention_md_v2
 if TYPE_CHECKING:
     from aiogram.types import ChatMemberUpdated
 
@@ -32,11 +33,13 @@ async def any_to_unhandled(chat_member: ChatMemberUpdated, bot: Bot, developer_i
         chat_member.chat.id,
     )
 
+    user = chat_member.new_chat_member.user
     await bot.send_message(
         developer_id,
-        f"🚨 DETECTED ANY TO UNHANDLED:\n"
-        f"Alert id: {alert_id}\n"
-        f"user_id: {chat_member.new_chat_member.user.id}\n"
-        f"mention: {chat_member.new_chat_member.user.mention_html()}\n"
-        "Details in /logs",
+        escape_md_v2(
+            "🚨 DETECTED ANY TO UNHANDLED:\n"
+            f"Alert id: {alert_id}\n"
+            f"user_id: {user.id}\n"
+            "mention: "
+        ) + mention_md_v2(user) + "\nDetails in /logs"
     )

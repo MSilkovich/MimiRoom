@@ -19,9 +19,6 @@ class Settings(BaseSettings):
 
     BOT_TOKEN: SecretStr = SecretStr("")
 
-    # Публичный username бота (для формирования ссылки привязки).
-    BOT_USERNAME: str = ""
-
     PROXY_LINK: str | None = None
 
 

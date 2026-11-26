@@ -13,6 +13,7 @@ from aiogram.types import Message
 from services.link_cache import resolve_user_id
 from services.task_publisher import publish_incoming
 from utils.logging import get_logger
+from utils.escape_helper import escape_md_v2
 
 router = Router()
 logger = get_logger(__name__)
@@ -56,7 +57,7 @@ async def on_text_message(msg: Message) -> None:
         )
     except Exception:  # noqa: BLE001 — не роняем хендлер из-за Redis
         logger.exception("Failed to publish incoming message")
-        await msg.answer("😔 Сервис временно недоступен. Попробуйте позже.")
+        await msg.answer(escape_md_v2("😔 Сервис временно недоступен. Попробуйте позже."))
         return
 
     # Показываем «печатает», пока engine думает.

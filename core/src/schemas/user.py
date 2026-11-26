@@ -41,8 +41,8 @@ class UserUpdate(Base):
     name: str | None = None
     surname: str | None = None
     patronymic: str | None = None
-    phone: str | None
-    email: str | None
+    phone: str | None = None
+    email: str | None = None
 
 
 class UserRoleUpdate(Base):
