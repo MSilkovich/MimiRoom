@@ -1,8 +1,11 @@
 from datetime import datetime
 
+from pydantic import Field
+
 from src.permissions.enums.roles import Role
 
 from .base_schema import Base
+from .pet import PetRead
 
 
 class UserRead(Base):
@@ -14,6 +17,12 @@ class UserRead(Base):
     phone: str | None
     email: str | None
     role: str
+
+
+class UserProfileRead(UserRead):
+    """Профиль пользователя для ЛК: данные + его питомцы."""
+
+    pets: list[PetRead] = Field(default_factory=list)
 
 
 class UserCreate(Base):
@@ -32,8 +41,8 @@ class UserUpdate(Base):
     name: str | None = None
     surname: str | None = None
     patronymic: str | None = None
-    phone: str | None
-    email: str | None
+    phone: str | None = None
+    email: str | None = None
 
 
 class UserRoleUpdate(Base):

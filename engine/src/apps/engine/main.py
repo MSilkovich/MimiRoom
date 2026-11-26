@@ -3,7 +3,7 @@ import logging
 from fastapi import FastAPI
 
 from config.project_config import settings_app
-from src.apps.engine.routes import get_apps_router
+from .routes import get_apps_router, get_staff_router
 from .lifespan import lifespan
 
 
@@ -35,6 +35,7 @@ def get_application() -> FastAPI:
         ],
     )
 
+    application.include_router(get_staff_router())
     application.include_router(get_apps_router())
 
     return application

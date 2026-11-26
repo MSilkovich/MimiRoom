@@ -11,7 +11,9 @@ from .user_repository import UserRepository
 from .user_link_repository import UserLinkRepository
 from .pet_repository import PetRepository
 from .service_consumable_repository import ServiceConsumableRepository
-from .book_repository import BookRepository
+from .work_schedule_repository import WorkScheduleRepository
+from .booking_settings_repository import BookingSettingsRepository
+from .booking_repository import BookingRepository
 
 __all__ = [
     "AbstractRepository",
@@ -28,5 +30,7 @@ __all__ = [
     "UserLinkRepository",
     "PetRepository",
     "ServiceConsumableRepository",
-    "BookRepository",
+    "WorkScheduleRepository",
+    "BookingSettingsRepository",
+    "BookingRepository",
 ]

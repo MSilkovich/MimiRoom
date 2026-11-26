@@ -34,3 +34,11 @@ class Permission(IntEnum):
     PET_READ = 16
     PET_WRITE = 17
     PET_DELETE = 18
+
+    MASTER_READ = 19
+    MASTER_WRITE = 20
+    MASTER_DELETE = 21
+
+    SCHEDULE_READ = 22
+    SCHEDULE_WRITE = 23
+    SCHEDULE_DELETE = 24

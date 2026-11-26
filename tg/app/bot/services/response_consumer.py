@@ -13,10 +13,13 @@ from __future__ import annotations
 from typing import Any
 
 from aiogram import Bot
-from aiogram.exceptions import TelegramAPIError
+from aiogram.enums import ParseMode
+from aiogram.exceptions import TelegramAPIError, TelegramBadRequest
+from redis.exceptions import TimeoutError as RedisTimeoutError
 
 from config.core_config import settings_core
 from config.redis_config import settings_redis
+from utils.escape_helper import to_markdown_v2
 from utils.logging import get_logger
 
 from .redis_client import ensure_response_group, get_redis
@@ -51,6 +54,37 @@ def _parse_response(fields: dict[str, str]) -> tuple[str, int] | None:
     return text, chat_id
 
 
+async def _send(bot: Bot, chat_id: int, text: str) -> None:
+    """Отправить MarkdownV2; при ошибке разметки — повтор без форматирования.
+
+    Telegram очень строг к MarkdownV2: любой неэкранированный символ
+    (``.``, ``!``, ``(``, ``-`` и т.п.) приводит к ``can't parse entities``.
+    Поэтому сначала пытаемся нормализовать текст, а если Telegram всё равно
+    отверг разметку — отправляем как обычный текст, чтобы не терять ответ.
+    """
+    try:
+        await bot.send_message(
+            chat_id=chat_id,
+            text=to_markdown_v2(text),
+            parse_mode=ParseMode.MARKDOWN_V2,
+            disable_web_page_preview=True,
+        )
+        return
+    except TelegramBadRequest:
+        logger.warning(
+            "MarkdownV2 parse failed for chat=%s, retrying as plain text",
+            chat_id,
+            exc_info=True,
+        )
+
+    await bot.send_message(
+        chat_id=chat_id,
+        text=text,
+        parse_mode=None,
+        disable_web_page_preview=True,
+    )
+
+
 async def _deliver(bot: Bot, fields: dict[str, str]) -> None:
     parsed = _parse_response(fields)
     if parsed is None:
@@ -58,12 +92,7 @@ async def _deliver(bot: Bot, fields: dict[str, str]) -> None:
     text, chat_id = parsed
 
     try:
-        await bot.send_message(
-            chat_id=chat_id,
-            text=text,
-            parse_mode=None,
-            disable_web_page_preview=True,
-        )
+        await _send(bot, chat_id, text)
         logger.info(
             "Response delivered: chat=%s original_message_id=%s text_len=%d",
             chat_id, fields.get("original_message_id"), len(text),
@@ -113,13 +142,18 @@ async def run_response_consumer(bot: Bot) -> None:
         _STREAM, _GROUP, _CONSUMER,
     )
     while True:
-        results = await r.xreadgroup(
-            groupname=_GROUP,
-            consumername=_CONSUMER,
-            streams={_STREAM: ">"},
-            count=settings_redis.REDIS_READ_COUNT,
-            block=settings_redis.REDIS_BLOCK_MS,
-        )
+        try:
+            results = await r.xreadgroup(
+                groupname=_GROUP,
+                consumername=_CONSUMER,
+                streams={_STREAM: ">"},
+                count=settings_redis.REDIS_READ_COUNT,
+                block=settings_redis.REDIS_BLOCK_MS,
+            )
+        except RedisTimeoutError:
+            # Единичный таймаут чтения при простое — не повод ронять consumer.
+            logger.debug("Redis read timeout while idle, continuing")
+            continue
         if not results:
             continue
         for _stream, messages in results:

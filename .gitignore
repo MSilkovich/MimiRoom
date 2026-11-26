@@ -3,3 +3,4 @@
 venv
 .tmp/
 docker/vpn-config.json
+/docker/vpn-config.json

@@ -1,5 +1,7 @@
+from src.excpetions.crud import ValidationError
+from src.models.service import Service
 from src.models.service_consumable import ServiceConsumable
-from ..models.service import Service
+from src.models.user import User
 from ..schemas import ServiceCreate, ServiceUpdate
 from .base import BaseService
 
@@ -7,19 +9,66 @@ from .base import BaseService
 class ServiceService(BaseService[Service, ServiceCreate, ServiceUpdate]):
     model = Service
 
+    @staticmethod
+    async def _ensure_masters_exist(user_repo, master_ids: list[int]) -> None:
+        unique_ids = set(master_ids)
+        found = await user_repo.get_many_by_ids(unique_ids)
+        missing = unique_ids - {user.user_id for user in found}
+        if missing:
+            raise ValidationError(f"Мастера не найдены: {sorted(missing)}")
+
     async def create(self, data: ServiceCreate) -> Service:
         async with self.uow_factory() as uow:
             service_repo = uow.repository(Service)
             consumable_repo = uow.repository(ServiceConsumable)
+            user_repo = uow.repository(User)
 
-            payload = data.model_dump(exclude={"consumables"})
+            payload = data.model_dump(exclude={"consumables", "master_ids"})
             service = await service_repo.create(payload)
+            service_id = service.service_id
+
+            if data.master_ids:
+                await self._ensure_masters_exist(user_repo, data.master_ids)
+                await service_repo.replace_masters(
+                    service_id, data.master_ids
+                )
 
             if data.consumables:
                 await consumable_repo.create_many([
-                    {**c.model_dump(), "service_id": service.service_id}
+                    {**c.model_dump(), "service_id": service_id}
                     for c in data.consumables
                 ])
 
             await uow.commit()
-            return service
+            uow.session.expire_all()
+            reloaded = await service_repo.get_single(service_id=service_id)
+            return reloaded or service
+
+    async def update(
+        self, pk: int, data: ServiceUpdate
+    ) -> Service | None:
+        async with self.uow_factory() as uow:
+            service_repo = uow.repository(Service)
+            user_repo = uow.repository(User)
+
+            payload = data.model_dump(
+                exclude_unset=True, exclude={"master_ids"}
+            )
+            if payload:
+                service = await service_repo.update(
+                    payload, service_id=pk
+                )
+            else:
+                service = await service_repo.get_single(service_id=pk)
+            if service is None:
+                return None
+
+            if data.master_ids is not None:
+                await self._ensure_masters_exist(
+                    user_repo, data.master_ids
+                )
+                await service_repo.replace_masters(pk, data.master_ids)
+
+            await uow.commit()
+            uow.session.expire_all()
+            return await service_repo.get_single(service_id=pk)

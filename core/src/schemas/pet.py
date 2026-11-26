@@ -2,6 +2,8 @@ from datetime import date, datetime
 
 from pydantic import Field
 
+from src.models.enums.booking_status import BookingStatus
+
 from .base_schema import Base
 
 
@@ -37,3 +39,16 @@ class PetUpdate(Base):
     owner_id: int | None = Field(default=None, examples=[1])
     birthday: date | None = Field(default=None, examples=["2020-05-15"])
     breed_id: int | None = Field(default=None, examples=[1])
+
+
+class PetHistoryRead(Base):
+    """Строка истории посещений питомца."""
+
+    booking_id: int
+    service_id: int
+    service_title: str | None = None
+    master_id: int
+    master_name: str | None = None
+    start_time: datetime
+    end_time: datetime
+    status: BookingStatus

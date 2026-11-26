@@ -8,8 +8,11 @@ from .storage_service import StorageService
 from .user_service import UserService
 from .pet_service import PetService
 from .service_consumable_service import ServiceConsumableService
-from .book_service import BookServiceService
 from .user_link_service import UserLinkService
+from .master_service import MasterService
+from .work_schedule_service import WorkScheduleService
+from .slot_service import SlotService
+from .booking_service import BookingService
 
 __all__ = [
     "GenericService",
@@ -22,6 +25,9 @@ __all__ = [
     "UserService",
     "PetService",
     "ServiceConsumableService",
-    "BookServiceService",
     "UserLinkService",
+    "MasterService",
+    "WorkScheduleService",
+    "SlotService",
+    "BookingService",
 ]

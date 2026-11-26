@@ -9,4 +9,7 @@ def create_llm_client() -> LLMClient:
     if provider == "ollama":
         from src.llm.qwen_client import QwenClient
         return QwenClient()
+    if provider == "cloude.ru":
+        from src.llm.qwen_client import QwenClient
+        return QwenClient()
     raise ValueError(f"Unknown LLM provider: {provider}")

@@ -4,6 +4,7 @@ import asyncio
 import logging
 
 import redis.asyncio as redis
+from redis.exceptions import TimeoutError as RedisTimeoutError
 
 from src.logging import get_logger
 from config.redis import settings_redis
@@ -104,13 +105,17 @@ async def run_consumer() -> None:
     # Фаза 2: main loop
     try:
         while True:
-            results = await r.xreadgroup(
-                groupname=settings_redis.REDIS_GROUP_NAME,
-                consumername=settings_redis.REDIS_CONSUMER_NAME,
-                streams={settings_redis.REDIS_STREAM_NAME: ">"},
-                count=settings_redis.REDIS_READ_COUNT,
-                block=settings_redis.REDIS_BLOCK_MS,
-            )
+            try:
+                results = await r.xreadgroup(
+                    groupname=settings_redis.REDIS_GROUP_NAME,
+                    consumername=settings_redis.REDIS_CONSUMER_NAME,
+                    streams={settings_redis.REDIS_STREAM_NAME: ">"},
+                    count=settings_redis.REDIS_READ_COUNT,
+                    block=settings_redis.REDIS_BLOCK_MS,
+                )
+            except RedisTimeoutError:
+                logger.debug("Redis read timeout while idle, continuing")
+                continue
             if not results:
                 continue
             for _stream, messages in results:

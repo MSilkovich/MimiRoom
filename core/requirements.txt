@@ -9,6 +9,7 @@ annotated-types==0.7.0
 anyio==4.8.0
 argon2-cffi==23.1.0
 argon2-cffi-bindings==21.2.0
+bcrypt==4.0.1
 asyncpg==0.30.0
 attrs==25.1.0
 certifi==2025.1.31
@@ -27,7 +28,6 @@ iniconfig==2.3.1
 Mako==1.4.3
 MarkupSafe==3.0.4
 minio==7.2.15
-multidict==2.1.0
 packaging==26.3
 pamqp==3.3.0
 passlib==1.7.4

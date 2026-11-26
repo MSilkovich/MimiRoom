@@ -16,6 +16,8 @@ from aiogram.filters import (
 )
 from aiogram.types import ChatMemberRestricted
 
+from utils.escape_helper import escape_md_v2
+
 if TYPE_CHECKING:
     from aiogram.types import ChatMemberAdministrator, ChatMemberMember, ChatMemberUpdated
 
@@ -39,12 +41,12 @@ async def my_chat_member_promoted_transition(chat_member: ChatMemberUpdated, bot
 
     await bot.send_message(
         chat_id=chat_member.chat.id,
-        text="❤️ Thank you for promoting me to an administrator!\n"
-        "\n"
-        "💬 For full functionality, I need the following rights:\n"
-        f"{"'✅" if can_delete_messages else '❌'} Delete messages\n"
-        f"{"'✅" if can_restrict_members else '❌'} Restrict members\n"
-        f"{"'✅" if can_invite_users else '❌'} Invite users\n",
+        text=escape_md_v2("❤️ Thank you for promoting me to an administrator!\n" +
+                          "\n" +
+                          "💬 For full functionality, I need the following rights:\n" +
+                          f"{"'✅" if can_delete_messages else '❌'} Delete messages\n" +
+                          f"{"'✅" if can_restrict_members else '❌'} Restrict members\n" +
+                          f"{"'✅" if can_invite_users else '❌'} Invite users\n")
     )
 
 
@@ -64,7 +66,8 @@ async def my_chat_member_join_transition(chat_member: ChatMemberUpdated, bot: Bo
     logger.info("Bot was added to chat %s", chat_member.chat.id)
 
     if TYPE_CHECKING:
-        assert isinstance(chat_member.new_chat_member, ChatMemberMember | ChatMemberRestricted)
+        assert isinstance(chat_member.new_chat_member,
+                          ChatMemberMember | ChatMemberRestricted)
 
     if (
         isinstance(chat_member.new_chat_member, ChatMemberRestricted)
@@ -72,12 +75,12 @@ async def my_chat_member_join_transition(chat_member: ChatMemberUpdated, bot: Bo
     ):
         await bot.send_message(
             chat_id=chat_member.chat.id,
-            text="❤️ Thank you for adding me to the chat.\n"
-            "\n"
-            "💬 For full functionality, I need the following rights:\n"
-            "❌ Delete messages\n"
-            "❌ Restrict members\n"
-            "❌ Invite users",
+            text=escape_md_v2("❤️ Thank you for adding me to the chat.\n"
+                              "\n"
+                              "💬 For full functionality, I need the following rights:\n"
+                              "❌ Delete messages\n"
+                              "❌ Restrict members\n"
+                              "❌ Invite users")
         )
 
 
@@ -98,9 +101,8 @@ async def my_chat_member_demoted_transition(chat_member: ChatMemberUpdated, bot:
 
     await bot.send_message(
         chat_id=chat_member.chat.id,
-        text="My administrator rights have been revoked.\n"
-        "\n"
-        "I will continue to work in the chat, but with limited capabilities.",
+        text=escape_md_v2(
+            "My administrator rights have been revoked.\n\nI will continue to work in the chat, but with limited capabilities.")
     )
 
 

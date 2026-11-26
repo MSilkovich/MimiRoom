@@ -3,10 +3,9 @@
 Бот выступает сервисом: ходит в core с сервисным JWT (``type=service``),
 подписанным ``CORE_SERVICE_SECRET`` (тем же, что ``SERVICE_JWT_SECRET`` в core).
 
-Ручки (см. README, раздел «Требования к core»):
-- POST /api/v0.0.1/users/link — привязать провайдера к пользователю.
-- GET  /api/v0.0.1/users/link?provider=&external_id= — найти связку.
-  ЭТОЙ РУЧКИ В CORE ПОКА НЕТ — её нужно добавить (спека в README).
+Привязка провайдера выполняется только одноразовым кодом:
+- POST /users/link/code/consume — обменять код на связку.
+- GET  /users/link              — найти связку по provider + external_id.
 """
 
 from __future__ import annotations
@@ -78,11 +77,9 @@ class CoreClient:
         *,
         json_body: dict[str, Any] | None = None,
         params: dict[str, Any] | None = None,
-        bearer: str | None = None,
     ) -> Any:
         url = f"{self._base_url}{path}"
-        token = bearer or self._service_token
-        headers = {"Authorization": f"Bearer {token}"}
+        headers = {"Authorization": f"Bearer {self._service_token}"}
         timeout = aiohttp.ClientTimeout(total=self._timeout)
 
         logger.debug("Core request: %s %s params=%s", method, url, params)
@@ -110,31 +107,6 @@ class CoreClient:
                 except json.JSONDecodeError:
                     logger.error("Core returned non-JSON: %s", body_text[:300])
                     return None
-
-    async def create_link(
-        self,
-        *,
-        user_id: int,
-        external_id: str,
-        service_token: str | None = None,
-        options: dict[str, Any] | None = None,
-    ) -> dict[str, Any] | None:
-        """POST /users/link — привязать внешнего пользователя к core-пользователю.
-
-        ``service_token`` (если передан в deep-link) используется как Bearer,
-        иначе — сервисный токен.
-        """
-        return await self._request(
-            "POST",
-            settings_core.CORE_LINK_PATH,
-            json_body={
-                "user_id": user_id,
-                "provider": self._provider,
-                "external_id": external_id,
-                "options": options or {},
-            },
-            bearer=service_token,
-        )
 
     async def get_link(self, external_id: str) -> dict[str, Any] | None:
         """GET /users/link — найти связку по provider + external_id.
