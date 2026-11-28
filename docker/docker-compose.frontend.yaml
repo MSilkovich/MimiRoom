@@ -1,0 +1,13 @@
+# Optional overlay: docker compose -f docker-compose.yaml -f docker-compose.frontend.yaml up frontend
+services:
+  frontend:
+    build:
+      context: ../frontend
+    ports:
+      - "127.0.0.1:4180:4180"
+    environment:
+      CORE_API_URL: "http://core:${CORE_PORT:-30010}"
+      AI_ENABLED: "false"
+      TELEGRAM_ENABLED: "false"
+    networks:
+      - network-bridge

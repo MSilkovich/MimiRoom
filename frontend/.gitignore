@@ -1,0 +1,18 @@
+node_modules/
+.DS_Store
+*.tar.gz
+.env*
+!.env.example
+.data/
+.openai/
+.idea/
+.vscode/
+*.log
+*.zip
+__pycache__/
+*.pyc
+artifacts/
+# Автономные сборки генерируются командой npm run package.
+/MiMiRoom_CRM_Preview.html
+/MiMiRoom_Client.html
+/MiMiRoom_Studio.html

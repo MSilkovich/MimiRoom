@@ -1,0 +1,13 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {availableSlots,collisionFor,durationMinutes} from '../dist/scheduling.js';
+const services=[{service_id:1,duration_minutes:120},{service_id:2,duration:'PT30M'}];
+const booking={book_id:1,master_id:1,pet_id:7,service_id:1,date:'2026-11-09',time:'10:00:00'};
+const base={bookings:[booking],services,date:booking.date,masterId:1,petId:8,duration:60};
+test('adjacent appointments are allowed but overlaps are blocked',()=>{assert.equal(collisionFor({...base,start:720}),undefined);assert.equal(collisionFor({...base,start:690}),booking)});
+test('pet cannot be booked simultaneously with another master',()=>assert.equal(collisionFor({...base,masterId:2,petId:7,start:600}),booking));
+test('editing ignores the appointment itself',()=>assert.equal(collisionFor({...base,start:600,excludeId:1}),undefined));
+test('availability ends before close and excludes conflicts',()=>{const slots=availableSlots(base);assert.equal(slots[0],'12:00');assert.equal(slots.at(-1),'18:00');assert.ok(!slots.includes('11:30'))});
+test('other dates and masters do not block slots',()=>{assert.equal(availableSlots({...base,date:'2026-11-10'})[0],'10:00');assert.equal(availableSlots({...base,masterId:2})[0],'10:00')});
+test('duration handles API minutes, hours, days and seconds',()=>{assert.equal(durationMinutes({duration:'PT1H30M'}),90);assert.equal(durationMinutes({duration:'P1D'}),1440);assert.equal(durationMinutes({duration:'PT90S'}),2);assert.deepEqual(availableSlots({...base,duration:1440}),[])});
+test('cancelling frees the slot while preserving booking history',()=>{assert.equal(availableSlots({...base,bookings:[{...booking,status:'cancelled'}]})[0],'10:00')});
