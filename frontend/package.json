@@ -1,0 +1,21 @@
+{
+  "name": "mimiroom-crm",
+  "version": "0.5.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "node server/http.mjs",
+    "dev": "node --watch server/http.mjs",
+    "dev:static": "python3 -m http.server 4173 --bind 127.0.0.1 --directory dist",
+    "check": "node scripts/check.mjs",
+    "test": "node --test tests/*.test.mjs",
+    "package": "python3 scripts/package-preview.py",
+    "support": "node server/http.mjs",
+    "setup:ai": "python3 scripts/configure-ai.py",
+    "sync:catalog": "node scripts/sync-support-catalog.mjs",
+    "test:browser": "node tests/browser-smoke.mjs"
+  }
+}
